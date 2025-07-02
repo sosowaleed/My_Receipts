@@ -9,14 +9,16 @@ class ProfileProvider with ChangeNotifier {
   Profile? _currentProfile;
   List<Profile> _allProfiles = [];
   List<Transaction> _transactions = [];
-  List<Category> _categories = [];
+  List<Category> _incomeCategories = [];
+  List<Category> _outgoingCategories = [];
   bool _isLoading = true;
-  Locale _appLocale = const Locale('en');
+  Locale _appLocale = const Locale('ar');
 
   Profile? get currentProfile => _currentProfile;
   List<Profile> get allProfiles => _allProfiles;
   List<Transaction> get transactions => _transactions;
-  List<Category> get categories => _categories;
+  List<Category> get incomeCategories => _incomeCategories;
+  List<Category> get outgoingCategories => _outgoingCategories;
   bool get isLoading => _isLoading;
   bool get hasProfiles => _allProfiles.isNotEmpty;
   Locale get appLocale => _appLocale;
@@ -46,10 +48,17 @@ class ProfileProvider with ChangeNotifier {
     notifyListeners();
 
     _allProfiles = await DatabaseService.instance.readAllProfiles();
-    _categories = await DatabaseService.instance.readAllCategories();
 
     if (_allProfiles.isNotEmpty) {
-      await switchProfile(_currentProfile?.id ?? _allProfiles.first.id!);
+      // Make sure a profile is selected before loading its categories
+      final profileToLoad = _currentProfile?.id ?? _allProfiles.first.id!;
+      await switchProfile(profileToLoad);
+    } else {
+      // Clear data if no profiles exist
+      _currentProfile = null;
+      _transactions = [];
+      _incomeCategories = [];
+      _outgoingCategories = [];
     }
 
     _isLoading = false;
@@ -59,8 +68,19 @@ class ProfileProvider with ChangeNotifier {
   Future<void> switchProfile(int profileId) async {
     _currentProfile = await DatabaseService.instance.readProfile(profileId);
     _transactions = await DatabaseService.instance.readTransactionsForProfile(profileId);
-    _allProfiles = await DatabaseService.instance.readAllProfiles(); // Refresh all profiles list too
+
+    // Fetch categories specific to this profile and type
+    _incomeCategories = await DatabaseService.instance.readAllCategoriesForProfile(profileId, TransactionType.income);
+    _outgoingCategories = await DatabaseService.instance.readAllCategoriesForProfile(profileId, TransactionType.outgoing);
+
+    _allProfiles = await DatabaseService.instance.readAllProfiles();
     notifyListeners();
+  }
+
+
+  Future<void> updateProfileName(int profileId, String newName) async {
+    await DatabaseService.instance.updateProfileName(profileId, newName);
+    await loadInitialData(); // Easiest way to refresh all state
   }
 
   Future<void> addProfile(Profile profile) async {
@@ -107,9 +127,18 @@ class ProfileProvider with ChangeNotifier {
     await refreshCurrentProfile();
   }
 
-  Future<Category> addCategory(String name) async {
-    final category = await DatabaseService.instance.createCategory(Category(name: name));
-    _categories = await DatabaseService.instance.readAllCategories();
+  Future<Category> addCategory(String name, TransactionType type) async {
+    final category = await DatabaseService.instance.createCategory(
+      Category(name: name),
+      _currentProfile!.id!,
+      type,
+    );
+    // Refresh the correct category list
+    if (type == TransactionType.income) {
+      _incomeCategories = await DatabaseService.instance.readAllCategoriesForProfile(_currentProfile!.id!, type);
+    } else {
+      _outgoingCategories = await DatabaseService.instance.readAllCategoriesForProfile(_currentProfile!.id!, type);
+    }
     notifyListeners();
     return category;
   }

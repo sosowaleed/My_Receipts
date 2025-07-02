@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 class _DraftTransaction {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController amountController = TextEditingController();
-  final TextEditingController descController = TextEditingController();
+  final TextEditingController descController = TextEditingController(text: " ");
   final TextEditingController quantityController = TextEditingController(text: "1");
   int? selectedCategoryId;
 }
@@ -132,11 +132,11 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
       );
       if (newCategoryName != null && newCategoryName.isNotEmpty) {
         final provider = Provider.of<ProfileProvider>(context, listen: false);
-        final newCategory = await provider.addCategory(newCategoryName);
+        final newCategory = await provider.addCategory(newCategoryName, widget.type);
         setState(() {
           draft.selectedCategoryId = newCategory.id;
         });
-        if (mounted) SnackbarHelper.show(context, l10n.categoryAdded(newCategoryName));
+        if (mounted) SnackbarHelper.show(context, l10n.categoryAdded(newCategoryName).replaceAll('{categoryName}', newCategoryName));
       }
     } else {
       setState(() {
@@ -225,12 +225,17 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
               ),
               Consumer<ProfileProvider>(
                 builder: (context, provider, child) {
+                  // Choose the correct category list based on the overlay's type
+                  final categories = widget.type == TransactionType.income
+                      ? provider.incomeCategories
+                      : provider.outgoingCategories;
+
                   return DropdownButtonFormField<String>(
                     value: draft.selectedCategoryId?.toString(),
                     hint: Text(l10n.category),
                     isExpanded: true,
                     items: [
-                      ...provider.categories.map((Category cat) {
+                      ...categories.map((Category cat) { // Use the correct list
                         return DropdownMenuItem<String>(
                           value: cat.id.toString(),
                           child: Text(cat.name),

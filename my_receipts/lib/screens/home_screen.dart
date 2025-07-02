@@ -99,6 +99,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _showEditProfileNameDialog(BuildContext context, Profile profile) {
+    final provider = Provider.of<ProfileProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+    final nameController = TextEditingController(text: profile.name);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.edit),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.profileName),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = nameController.text;
+              if (newName.isNotEmpty && newName != profile.name) {
+                provider.updateProfileName(profile.id!, newName);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showProfileDialog(BuildContext context) {
     final provider = Provider.of<ProfileProvider>(context, listen: false);
@@ -129,7 +162,17 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // The new, adjacent delete button
+                    // Profile edit icon
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                      tooltip: l10n.edit,
+                      onPressed: () {
+                        Navigator.pop(dialogContext); // Close profile list
+                        _showEditProfileNameDialog(context, profile);
+                      },
+                    ),
+                    // Adjacent delete button
                     IconButton(
                       icon: const Icon(Icons.delete_outline),
                       color: Colors.red.shade600,
@@ -170,7 +213,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- NEW HELPER METHOD: For showing the delete confirmation ---
   void _confirmDeleteProfile(BuildContext context, Profile profile) {
     final provider = Provider.of<ProfileProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
