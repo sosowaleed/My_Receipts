@@ -1,3 +1,4 @@
+import 'package:hijri/hijri_calendar.dart';
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:path/path.dart';
 import 'package:my_receipts/models/profile.dart';
@@ -242,7 +243,7 @@ class DatabaseService {
     });
   }
 
-
+  // Read all transactions for a given profile
   Future<List<Transaction>> readTransactionsForProfile(int profileId) async {
     final db = await instance.database;
     // Use a LEFT JOIN to get the category name along with the transaction
@@ -257,8 +258,178 @@ class DatabaseService {
     return result.map((json) => Transaction.fromMap(json)).toList();
   }
 
+  // Close the database connection
   Future close() async {
     final db = await instance.database;
     db.close();
+  }
+
+  // Delete all transactions for a given month
+  Future<void> deleteTransactionsForMonth(int profileId, int year, int month) async {
+    final db = await instance.database;
+    // Define the start and end of the month for the query
+    final firstDayOfMonth = DateTime(year, month, 1).toIso8601String();
+    final firstDayOfNextMonth = DateTime(year, month + 1, 1).toIso8601String();
+
+    await db.transaction((txn) async {
+      // Find all transactions within the date range for this profile
+      final transactionsToDelete = await txn.query(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfMonth, firstDayOfNextMonth],
+      );
+
+      if (transactionsToDelete.isEmpty) return;
+
+      // Calculate the net change to reverse
+      double netChange = 0;
+      for (var txMap in transactionsToDelete) {
+        final tx = Transaction.fromMap(txMap);
+        if (tx.type == TransactionType.income) {
+          netChange += tx.amount;
+        } else {
+          netChange -= tx.amount;
+        }
+      }
+
+      // Read the current wallet amount
+      final profile = (await txn.query('profiles', where: 'id = ?', whereArgs: [profileId])).first;
+      double currentWallet = profile['walletAmount'] as double;
+
+      // Reverse the net change on the wallet
+      double newWallet = currentWallet - netChange;
+
+      // Perform the update and delete operations
+      await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [profileId]);
+      await txn.delete(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfMonth, firstDayOfNextMonth],
+      );
+    });
+  }
+
+  // Delete all transactions for a given year
+  Future<void> deleteTransactionsForYear(int profileId, int year) async {
+    final db = await instance.database;
+    final firstDayOfYear = DateTime(year, 1, 1).toIso8601String();
+    final firstDayOfNextYear = DateTime(year + 1, 1, 1).toIso8601String();
+
+    await db.transaction((txn) async {
+      final transactionsToDelete = await txn.query(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfYear, firstDayOfNextYear],
+      );
+
+      if (transactionsToDelete.isEmpty) return;
+
+      double netChange = 0;
+      for (var txMap in transactionsToDelete) {
+        final tx = Transaction.fromMap(txMap);
+        if (tx.type == TransactionType.income) {
+          netChange += tx.amount;
+        } else {
+          netChange -= tx.amount;
+        }
+      }
+
+      final profile = (await txn.query('profiles', where: 'id = ?', whereArgs: [profileId])).first;
+      double currentWallet = profile['walletAmount'] as double;
+      double newWallet = currentWallet - netChange;
+
+      await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [profileId]);
+      await txn.delete(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfYear, firstDayOfNextYear],
+      );
+    });
+  }
+  Future<void> deleteTransactionsForHijriMonth(int profileId, int hYear, int hMonth) async {
+    final db = await instance.database;
+
+    // Convert Hijri month/year to a Gregorian date range
+    final firstDayHijri = HijriCalendar()
+      ..hYear = hYear
+      ..hMonth = hMonth
+      ..hDay = 1;
+
+    final nextMonthHijri = HijriCalendar()
+      ..hYear = (hMonth == 12) ? hYear + 1 : hYear
+      ..hMonth = (hMonth == 12) ? 1 : hMonth + 1
+      ..hDay = 1;
+
+    // Convert the Hijri boundary dates to Gregorian DateTime for the DB query
+    final firstDayOfMonthGregorian = firstDayHijri.hijriToGregorian(hYear, hMonth, 1).toIso8601String();
+    final firstDayOfNextMonthGregorian = nextMonthHijri.hijriToGregorian(
+        nextMonthHijri.hYear, nextMonthHijri.hMonth, 1).toIso8601String();
+
+    // The rest of the logic is identical to the Gregorian version, just with the new date range
+    await db.transaction((txn) async {
+      final transactionsToDelete = await txn.query(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfMonthGregorian, firstDayOfNextMonthGregorian],
+      );
+
+      if (transactionsToDelete.isEmpty) return;
+
+      double netChange = 0;
+      for (var txMap in transactionsToDelete) {
+        final tx = Transaction.fromMap(txMap);
+        netChange += (tx.type == TransactionType.income ? tx.amount : -tx.amount);
+      }
+
+      final profile = (await txn.query('profiles', where: 'id = ?', whereArgs: [profileId])).first;
+      double currentWallet = profile['walletAmount'] as double;
+      double newWallet = currentWallet - netChange;
+
+      await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [profileId]);
+      await txn.delete(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfMonthGregorian, firstDayOfNextMonthGregorian],
+      );
+    });
+  }
+
+  Future<void> deleteTransactionsForHijriYear(int profileId, int hYear) async {
+    final db = await instance.database;
+
+    // Define the Hijri year range and convert to Gregorian
+    final firstDayOfYearHijri = HijriCalendar()..hYear = hYear..hMonth = 1..hDay = 1;
+    final firstDayOfNextYearHijri = HijriCalendar()..hYear = hYear + 1..hMonth = 1..hDay = 1;
+
+    final firstDayOfYearGregorian = firstDayOfYearHijri.hijriToGregorian(hYear, 1, 1).toIso8601String();
+    final firstDayOfNextYearGregorian = firstDayOfNextYearHijri.hijriToGregorian(hYear + 1, 1, 1).toIso8601String();
+
+    // The transaction logic is identical to the monthly one
+    await db.transaction((txn) async {
+      final transactionsToDelete = await txn.query(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfYearGregorian, firstDayOfNextYearGregorian],
+      );
+
+      if (transactionsToDelete.isEmpty) return;
+
+      double netChange = 0;
+      for (var txMap in transactionsToDelete) {
+        final tx = Transaction.fromMap(txMap);
+        netChange += (tx.type == TransactionType.income ? tx.amount : -tx.amount);
+      }
+
+      final profile = (await txn.query('profiles', where: 'id = ?', whereArgs: [profileId])).first;
+      double currentWallet = profile['walletAmount'] as double;
+      double newWallet = currentWallet - netChange;
+
+      await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [profileId]);
+      await txn.delete(
+        'transactions',
+        where: 'profileId = ? AND timestamp >= ? AND timestamp < ?',
+        whereArgs: [profileId, firstDayOfYearGregorian, firstDayOfNextYearGregorian],
+      );
+    });
   }
 }

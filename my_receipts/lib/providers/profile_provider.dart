@@ -142,4 +142,28 @@ class ProfileProvider with ChangeNotifier {
     notifyListeners();
     return category;
   }
+
+  Future<void> deleteMonthTransactions(int year, int month) async {
+    if (_currentProfile == null) return;
+    await DatabaseService.instance.deleteTransactionsForMonth(_currentProfile!.id!, year, month);
+    await refreshCurrentProfile(); // Use existing method to refresh state
+  }
+
+  Future<void> deleteYearTransactions(int year) async {
+    if (_currentProfile == null) return;
+    await DatabaseService.instance.deleteTransactionsForYear(_currentProfile!.id!, year);
+    await refreshCurrentProfile();
+  }
+
+  Future<void> deleteHijriMonthTransactions(int hYear, int hMonth) async {
+    if (_currentProfile == null) return;
+    await DatabaseService.instance.deleteTransactionsForHijriMonth(_currentProfile!.id!, hYear, hMonth);
+    await refreshCurrentProfile();
+  }
+
+  Future<void> deleteHijriYearTransactions(int hYear) async {
+    if (_currentProfile == null) return;
+    await DatabaseService.instance.deleteTransactionsForHijriYear(_currentProfile!.id!, hYear);
+    await refreshCurrentProfile();
+  }
 }

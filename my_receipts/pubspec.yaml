@@ -55,6 +55,7 @@ dependencies:
   # Calendar Conversion
   hijri: ^3.0.0 # For converting between Gregorian and Hijri calendars
   flutter_launcher_icons: ^0.14.4
+  collection: ^1.18.0
 
 # Configuration for the flutter_launcher_icons package
 flutter_launcher_icons:

@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:hijri/hijri_calendar.dart';
-
+import 'package:collection/collection.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/transaction_overlay.dart';
 
@@ -100,6 +100,7 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -112,7 +113,8 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
             tooltip: l10n.switchCalendar,
             onPressed: () {
               setState(() {
-                _currentCalendar = _currentCalendar == 'gregorian' ? 'hijri' : 'gregorian';
+                _currentCalendar =
+                _currentCalendar == 'gregorian' ? 'hijri' : 'gregorian';
               });
             },
           )
@@ -124,55 +126,142 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
             return const Center(child: Text("No transactions yet."));
           }
 
-          // Group transactions by Year -> Month
-          final grouped = <String, Map<String, List<Transaction>>>{};
-          for (var tx in provider.transactions) {
-            final yearKey = _currentCalendar == 'hijri' ? HijriCalendar.fromDate(tx.timestamp).hYear.toString() : tx.timestamp.year.toString();
-            final monthKey = _formatMonthYear(tx.timestamp);
+          // Group transactions by Year based on the current calendar selection
+          final groupedByYear = provider.transactions.groupListsBy((tx) {
+            return _currentCalendar == 'hijri'
+                ? HijriCalendar.fromDate(tx.timestamp).hYear
+                : tx.timestamp.year;
+          });
 
-            grouped.putIfAbsent(yearKey, () => {});
-            grouped[yearKey]!.putIfAbsent(monthKey, () => []);
-            grouped[yearKey]![monthKey]!.add(tx);
-          }
+          // Get a sorted list of years
+          final sortedYears = groupedByYear.keys.toList()
+            ..sort((a, b) => b.compareTo(a)); // Sort descending (newest first)
 
           return ListView.builder(
-            itemCount: grouped.keys.length,
+            itemCount: sortedYears.length,
             itemBuilder: (ctx, yearIndex) {
-              final year = grouped.keys.elementAt(yearIndex);
-              final months = grouped[year]!;
+              final year = sortedYears[yearIndex];
+              final transactionsForYear = groupedByYear[year]!;
 
-              return ExpansionTile(
-                title: Text(year, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                initiallyExpanded: true,
-                children: months.keys.map((month) {
-                  final transactionsForMonth = months[month]!;
-                  return ExpansionTile(
-                    title: Text(month),
-                    children: transactionsForMonth.map((tx) {
-                      final isIncome = tx.type == TransactionType.income;
-                      final currencyFormat = NumberFormat.currency(
-                        locale: provider.appLocale.toString(),
-                        symbol: provider.appLocale.languageCode == 'ar' ? 'SAR' : '\$',
-                      );
+              // Now, group the year's transactions by a composite month key
+              final groupedByMonth = transactionsForYear.groupListsBy((tx) {
+                final hijri = HijriCalendar.fromDate(tx.timestamp);
+                return DateKey(
+                  gYear: tx.timestamp.year,
+                  gMonth: tx.timestamp.month,
+                  hYear: hijri.hYear,
+                  hMonth: hijri.hMonth,
+                );
+              });
 
-                      return GestureDetector(
-                          onTap: () => _showEditTransactionOptions(context, tx),
-                      child: ListTile(
-                        leading: Icon(
-                          isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: isIncome ? Colors.green : Colors.red,
-                        ),
-                        title: Text(tx.description),
-                        subtitle: Text("${_formatDate(tx.timestamp)} - ${tx.categoryName}"),
-                        trailing: Text(
-                          currencyFormat.format(tx.amount),
-                          style: TextStyle(color: isIncome ? Colors.green : Colors.red, fontWeight: FontWeight.bold),
-                        ),
-                        ),
-                      );
-                    }).toList(),
+              // Get a sorted list of month keys
+              final sortedMonthKeys = groupedByMonth.keys.toList()
+                ..sort((a, b) {
+                  // Sort by Gregorian month descending for consistent ordering
+                  if (a.gYear != b.gYear) return b.gYear.compareTo(a.gYear);
+                  return b.gMonth.compareTo(a.gMonth);
+                });
+
+              return GestureDetector(
+                onLongPress: () {
+                  _showDeleteConfirmationDialog(
+                    context: context,
+                    title: "Delete Year Data",
+                    content:
+                    "Are you sure you want to delete all transaction data for the year $year? This action cannot be undone.",
+                    onConfirm: () {
+                      if (_currentCalendar == 'hijri') {
+                        provider.deleteHijriYearTransactions(year);
+                      } else {
+                        provider.deleteYearTransactions(year);
+                      }
+                    },
                   );
-                }).toList(),
+                },
+                child: ExpansionTile(
+                  title: Text(year.toString(),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  initiallyExpanded: true,
+                  children: sortedMonthKeys.map((dateKey) {
+                    final transactionsForMonth = groupedByMonth[dateKey]!;
+
+                    // Calculate monthly totals
+                    double monthlyIncome = 0;
+                    double monthlyExpenses = 0;
+                    for (var tx in transactionsForMonth) {
+                      if (tx.type == TransactionType.income) {
+                        monthlyIncome += tx.amount;
+                      } else {
+                        monthlyExpenses += tx.amount;
+                      }
+                    }
+                    double netChange = monthlyIncome - monthlyExpenses;
+
+                    return GestureDetector(
+                      onLongPress: () {
+                        _showDeleteConfirmationDialog(
+                          context: context,
+                          title: "Delete Month Data",
+                          content:
+                          "Are you sure you want to delete all transaction data for ${_formatMonthYear(transactionsForMonth.first.timestamp)}? This action cannot be undone.",
+                          onConfirm: () {
+                            if (_currentCalendar == 'hijri') {
+                              provider.deleteHijriMonthTransactions(
+                                  dateKey.hYear, dateKey.hMonth);
+                            } else {
+                              provider.deleteMonthTransactions(
+                                  dateKey.gYear, dateKey.gMonth);
+                            }
+                          },
+                        );
+                      },
+                      child: ExpansionTile(
+                        title: Text(
+                            _formatMonthYear(transactionsForMonth.first.timestamp)),
+                        children: [
+                          // List of transactions for the month
+                          ...transactionsForMonth.map((tx) {
+                            final isIncome = tx.type == TransactionType.income;
+                            final currencyFormat = NumberFormat.currency(
+                              locale: provider.appLocale.toString(),
+                              symbol: provider.appLocale.languageCode == 'ar'
+                                  ? 'SAR'
+                                  : '\$',
+                            );
+
+                            return GestureDetector(
+                              onTap: () => _showEditTransactionOptions(context, tx),
+                              child: ListTile(
+                                leading: Icon(
+                                  isIncome
+                                      ? Icons.arrow_downward
+                                      : Icons.arrow_upward,
+                                  color: isIncome ? Colors.green : Colors.red,
+                                ),
+                                title: Text(tx.description),
+                                subtitle: Text(
+                                    "${_formatDate(tx.timestamp)} - ${tx.categoryName ?? 'N/A'}"),
+                                trailing: Text(
+                                  currencyFormat.format(tx.amount),
+                                  style: TextStyle(
+                                      color: isIncome ? Colors.green : Colors.red,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            );
+                          }),
+                          // Add the monthly summary widget
+                          _MonthlySummary(
+                            income: monthlyIncome,
+                            expenses: monthlyExpenses,
+                            net: netChange,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
               );
             },
           );
@@ -180,4 +269,150 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
       ),
     );
   }
+
+  void _showDeleteConfirmationDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(AppLocalizations.of(context)!.cancel)),
+          TextButton(
+            child: Text(AppLocalizations.of(context)!.delete, style: const TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              onConfirm();
+              SnackbarHelper.show(context, "Data deleted successfully.");
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _MonthlySummary extends StatelessWidget {
+  final double income;
+  final double expenses;
+  final double net;
+
+  const _MonthlySummary({
+    required this.income,
+    required this.expenses,
+    required this.net,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(
+      locale: Provider.of<ProfileProvider>(context, listen: false).appLocale.toString(),
+      symbol: Provider.of<ProfileProvider>(context, listen: false).appLocale.languageCode == 'ar' ? 'SAR' : '\$',
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              _SummaryRow(
+                label: "Total Income",
+                value: currencyFormat.format(income),
+                color: Colors.green,
+              ),
+              const SizedBox(height: 4),
+              _SummaryRow(
+                label: "Total Expenses",
+                value: currencyFormat.format(expenses),
+                color: Colors.red,
+              ),
+              const Divider(height: 16),
+              _SummaryRow(
+                label: net >= 0 ? "Net Profit" : "Net Loss",
+                value: currencyFormat.format(net),
+                color: net >= 0 ? Colors.blue.shade700 : Colors.orange.shade800,
+                isBold: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// Helper widget for a row in the summary card
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isBold;
+
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.isBold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DateKey {
+  final int gYear;
+  final int gMonth;
+  final int hYear;
+  final int hMonth;
+
+  DateKey({
+    required this.gYear,
+    required this.gMonth,
+    required this.hYear,
+    required this.hMonth,
+  });
+
+
+  // Need to implement hashCode and == for Map keys to work correctly
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is DateKey &&
+              runtimeType == other.runtimeType &&
+              gYear == other.gYear &&
+              gMonth == other.gMonth;
+
+  @override
+  int get hashCode => gYear.hashCode ^ gMonth.hashCode;
 }
