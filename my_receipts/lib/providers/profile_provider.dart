@@ -4,6 +4,7 @@ import 'package:my_receipts/models/category.dart';
 import 'package:my_receipts/models/profile.dart';
 import 'package:my_receipts/models/transaction.dart';
 import 'package:my_receipts/services/database_service.dart';
+import 'package:my_receipts/services/recurrence_service.dart';
 
 class ProfileProvider with ChangeNotifier {
   Profile? _currentProfile;
@@ -52,6 +53,9 @@ class ProfileProvider with ChangeNotifier {
     if (_allProfiles.isNotEmpty) {
       // Make sure a profile is selected before loading its categories
       final profileToLoad = _currentProfile?.id ?? _allProfiles.first.id!;
+      if (_transactions.isNotEmpty) {
+        await RecurrenceService().processRecurrentTransactions(profileToLoad);
+      }
       await switchProfile(profileToLoad);
     } else {
       // Clear data if no profiles exist

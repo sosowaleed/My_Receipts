@@ -464,6 +464,61 @@ class S {
       args: [],
     );
   }
+
+  /// `Recurrent Transaction`
+  String get recurrentTransaction {
+    return Intl.message(
+      'Recurrent Transaction',
+      name: 'recurrentTransaction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Once`
+  String get once {
+    return Intl.message('Once', name: 'once', desc: '', args: []);
+  }
+
+  /// `Recurrent`
+  String get recurrent {
+    return Intl.message('Recurrent', name: 'recurrent', desc: '', args: []);
+  }
+
+  /// `Frequency`
+  String get frequency {
+    return Intl.message('Frequency', name: 'frequency', desc: '', args: []);
+  }
+
+  /// `Daily`
+  String get daily {
+    return Intl.message('Daily', name: 'daily', desc: '', args: []);
+  }
+
+  /// `Weekly`
+  String get weekly {
+    return Intl.message('Weekly', name: 'weekly', desc: '', args: []);
+  }
+
+  /// `Monthly`
+  String get monthly {
+    return Intl.message('Monthly', name: 'monthly', desc: '', args: []);
+  }
+
+  /// `End Date (Optional)`
+  String get endDateOptional {
+    return Intl.message(
+      'End Date (Optional)',
+      name: 'endDateOptional',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No End Date`
+  String get noEndDate {
+    return Intl.message('No End Date', name: 'noEndDate', desc: '', args: []);
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

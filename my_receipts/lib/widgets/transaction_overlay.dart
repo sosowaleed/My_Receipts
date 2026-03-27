@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:my_receipts/models/category.dart';
 import 'package:my_receipts/models/transaction.dart';
 import 'package:my_receipts/providers/profile_provider.dart';
@@ -27,7 +28,10 @@ class TransactionOverlay extends StatefulWidget {
 class _TransactionOverlayState extends State<TransactionOverlay> {
   late List<_DraftTransaction> _drafts;
   bool get _isEditing => widget.existingTransaction != null;
-
+  // Recurrence
+  bool _isRecurrent = false;
+  String _recurrenceType = 'monthly'; // Default frequency
+  DateTime? _recurrenceEndDate;
   @override
   void initState() {
     super.initState();
@@ -38,6 +42,9 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
       _drafts.first.descController.text = tx.description;
       _drafts.first.quantityController.text = tx.quantity.toString();
       _drafts.first.selectedCategoryId = tx.categoryId;
+      _isRecurrent = tx.isRecurrent;
+      _recurrenceType = tx.recurrenceType ?? 'monthly';
+      _recurrenceEndDate = tx.recurrenceEndDate;
     }
   }
 
@@ -77,6 +84,12 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
         categoryId: draft.selectedCategoryId!,
         quantity: int.parse(draft.quantityController.text),
         timestamp: widget.existingTransaction!.timestamp, // Keep original timestamp on edit
+        isRecurrent: _isRecurrent,
+        recurrenceType: _isRecurrent ? _recurrenceType : null,
+        recurrenceEndDate: _isRecurrent ? _recurrenceEndDate : null,
+        lastAppliedDate: _isEditing
+            ? widget.existingTransaction!.lastAppliedDate
+            : (_isRecurrent ? DateTime.now() : null),
       );
       await provider.updateTransaction(updatedTx, widget.existingTransaction!);
       if (mounted) SnackbarHelper.show(context, l10n.transactionUpdated);
@@ -92,6 +105,12 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
           categoryId: draft.selectedCategoryId!,
           quantity: int.parse(draft.quantityController.text),
           timestamp: DateTime.now(),
+          isRecurrent: _isRecurrent,
+          recurrenceType: _isRecurrent ? _recurrenceType : null,
+          recurrenceEndDate: _isRecurrent ? _recurrenceEndDate : null,
+          lastAppliedDate: _isEditing
+              ? widget.existingTransaction!.lastAppliedDate
+              : (_isRecurrent ? DateTime.now() : null),
         ));
       }
       await provider.addBatchTransactions(newTransactions);
@@ -257,6 +276,57 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
                 keyboardType: TextInputType.number,
                 validator: (v) => (v == null || int.tryParse(v) == null) ? l10n.errorInvalidNumber : null,
               ),
+              const Divider(height: 24),
+              SwitchListTile(
+                title: Text(l10n.recurrentTransaction),
+                value: _isRecurrent,
+                onChanged: (value) {
+                  setState(() {
+                    _isRecurrent = value;
+                  });
+                },
+              ),
+              if (_isRecurrent) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: DropdownButtonFormField<String>(
+                    value: _recurrenceType,
+                    decoration: InputDecoration(labelText: l10n.frequency),
+                    items: [
+                      DropdownMenuItem(value: 'daily', child: Text(l10n.daily)),
+                      DropdownMenuItem(value: 'weekly', child: Text(l10n.weekly)),
+                      DropdownMenuItem(value: 'monthly', child: Text(l10n.monthly)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _recurrenceType = value;
+                        });
+                      }
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: Text(l10n.endDateOptional),
+                  subtitle: Text(_recurrenceEndDate == null
+                      ? l10n.noEndDate
+                      : DateFormat.yMMMMd().format(_recurrenceEndDate!)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _recurrenceEndDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (pickedDate != null) {
+                      setState(() {
+                        _recurrenceEndDate = pickedDate;
+                      });
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),

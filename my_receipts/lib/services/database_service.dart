@@ -13,14 +13,14 @@ class DatabaseService {
 
   Future<sql.Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('receipts_v3.db');
+    _database = await _initDB('receipts_v4.db');
     return _database!;
   }
 
   Future<sql.Database> _initDB(String filePath) async {
     final dbPath = await sql.getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await sql.openDatabase(path, version: 3, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await sql.openDatabase(path, version: 4, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _createDB(sql.Database db, int version) async {
@@ -59,6 +59,10 @@ class DatabaseService {
         categoryId $integerType,
         quantity $integerType,
         timestamp $textType,
+        isRecurrent INTEGER NOT NULL DEFAULT 0,
+        recurrenceType TEXT,
+        recurrenceEndDate TEXT,
+        lastAppliedDate TEXT,
         FOREIGN KEY (profileId) REFERENCES profiles (id) ON DELETE CASCADE,
         FOREIGN KEY (categoryId) REFERENCES categories (id)
       )
@@ -101,8 +105,32 @@ class DatabaseService {
         )
       ''');
     }
+    // Handle upgrades from v3 to v4, which adds a new column to transactions
+    if (oldVersion < 4) {
+      // Use ALTER TABLE to add new columns without losing data
+      await db.execute('ALTER TABLE transactions ADD COLUMN isRecurrent INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE transactions ADD COLUMN recurrenceType TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN recurrenceEndDate TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN lastAppliedDate TEXT');
+    }
   }
 
+  // Read all recurrent transactions for a given profile
+  Future<List<Transaction>> readAllRecurrentTransactions(int profileId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'transactions',
+      where: 'profileId = ? AND isRecurrent = 1',
+      whereArgs: [profileId],
+    );
+    return result.map((json) => Transaction.fromMap(json)).toList();
+  }
+
+  // Update a recurrent transaction's recurrenceEndDate
+  Future<int> updateRecurrentTransaction(Transaction tx) async {
+    final db = await instance.database;
+    return await db.update('transactions', tx.toMap(), where: 'id = ?', whereArgs: [tx.id]);
+  }
 
   // When creating a new profile, also create its default categories
   Future<Profile> createProfile(Profile profile) async {

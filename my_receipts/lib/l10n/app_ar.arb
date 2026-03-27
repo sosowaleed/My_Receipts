@@ -47,5 +47,14 @@
   "categoryAdded": "تمت إضافة الفئة '{categoryName}'!",
   "importFailedCheckFormat": "فشل الاستيراد. تحقق من تنسيق الملف ومحتواه.",
   "selectImportFile": "اختر ملف الاستيراد",
-  "selectExportLocation": "اختر مكان التصدير"
+  "selectExportLocation": "اختر مكان التصدير",
+  "recurrentTransaction": "معاملة متكررة",
+  "once": "مرة واحدة",
+  "recurrent": "متكرر",
+  "frequency": "التكرار",
+  "daily": "يومي",
+  "weekly": "أسبوعي",
+  "monthly": "شهري",
+  "endDateOptional": "تاريخ الانتهاء (اختياري)",
+  "noEndDate": "بدون تاريخ انتهاء"
 }

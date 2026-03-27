@@ -47,5 +47,14 @@
   "categoryAdded": "Category '{categoryName}' added!",
   "importFailedCheckFormat": "Import Failed. Check file format and content.",
   "selectImportFile": "Select Import File",
-  "selectExportLocation": "Select Export Location"
+  "selectExportLocation": "Select Export Location",
+  "recurrentTransaction": "Recurrent Transaction",
+  "once": "Once",
+  "recurrent": "Recurrent",
+  "frequency": "Frequency",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "endDateOptional": "End Date (Optional)",
+  "noEndDate": "No End Date"
 }

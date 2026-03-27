@@ -27,15 +27,17 @@ class CsvService {
     List<List<dynamic>> rows = [];
 
     // --- NEW HEADER ROW ---
-    // Added "CategoryType" to distinguish between income/outgoing categories
     rows.add([
       "TransactionDate",
       "Type",
       "Amount",
       "Description",
       "Category",
-      "CategoryType", // NEW COLUMN
-      "Quantity"
+      "CategoryType",
+      "Quantity",
+      "IsRecurrent",
+      "RecurrenceType",
+      "RecurrenceEndDate"
     ]);
 
     for (var tx in transactions) {
@@ -56,7 +58,10 @@ class CsvService {
         tx.description,
         tx.categoryName ?? 'N/A',
         typeString, // The CategoryType is the same as the Transaction Type
-        tx.quantity
+        tx.quantity,
+        tx.isRecurrent.toString(),
+        tx.recurrenceType ?? '',
+        tx.recurrenceEndDate?.toIso8601String().split('T').first ?? '',
       ]);
     }
     String csvData = const ListToCsvConverter().convert(rows);
@@ -107,7 +112,7 @@ class CsvService {
       for (int i = 1; i < rows.length; i++) {
         var row = rows[i];
 
-        if (row.length != 7) continue;
+        if (row.length < 7) continue;
 
         DateTime timestamp = DateTime.tryParse(row[0].toString()) ?? DateTime.now();
         TransactionType type = row[1].toString().toLowerCase() == 'income'
@@ -123,11 +128,13 @@ class CsvService {
         int quantity = int.tryParse(row[6].toString()) ?? 1;
 
         if (amount <= 0 || categoryName.isEmpty || categoryName == 'N/A') continue;
-
-        // --- UPDATED CATEGORY LOOKUP LOGIC ---
         // Find or create the category using its name, profileId, AND type
         Category? category = await dbService.readCategoryByName(categoryName, profileId, categoryType);
         category ??= await dbService.createCategory(Category(name: categoryName), profileId, categoryType);
+
+        bool isRecurrent = row.length > 7 ? row[7].toString().toLowerCase() == 'true' : false;
+        String? recurrenceType = row.length > 8 && row[8].toString().isNotEmpty ? row[8].toString() : null;
+        DateTime? recurrenceEndDate = row.length > 9 && row[9].toString().isNotEmpty ? DateTime.tryParse(row[9].toString()) : null;
 
         final transaction = Transaction(
           profileId: profileId,
@@ -137,6 +144,10 @@ class CsvService {
           description: description,
           categoryId: category.id!,
           quantity: quantity,
+          isRecurrent: isRecurrent,
+          recurrenceType: recurrenceType,
+          recurrenceEndDate: recurrenceEndDate,
+          lastAppliedDate: isRecurrent ? DateTime.now() : null,
         );
 
         await dbService.createTransaction(transaction);

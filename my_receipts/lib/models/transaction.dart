@@ -10,6 +10,10 @@ class Transaction {
   final String? categoryName; // For display purposes
   final int quantity;
   final DateTime timestamp;
+  final bool isRecurrent;
+  final String? recurrenceType; // 'daily', 'weekly', 'monthly'
+  final DateTime? recurrenceEndDate;
+  final DateTime? lastAppliedDate;
 
   Transaction({
     this.id,
@@ -21,6 +25,10 @@ class Transaction {
     this.categoryName,
     required this.quantity,
     required this.timestamp,
+    this.isRecurrent = false,
+    this.recurrenceType,
+    this.recurrenceEndDate,
+    this.lastAppliedDate,
   });
 
   // This map is for writing to the database
@@ -34,6 +42,10 @@ class Transaction {
       'categoryId': categoryId,
       'quantity': quantity,
       'timestamp': timestamp.toIso8601String(),
+      'isRecurrent': isRecurrent ? 1 : 0,
+      'recurrenceType': recurrenceType,
+      'recurrenceEndDate': recurrenceEndDate?.toIso8601String(),
+      'lastAppliedDate': lastAppliedDate?.toIso8601String(),
     };
   }
 
@@ -50,6 +62,14 @@ class Transaction {
       categoryName: map['categoryName'], // From JOIN query
       quantity: map['quantity'],
       timestamp: DateTime.parse(map['timestamp']),
+      isRecurrent: map['isRecurrent'] == 1,
+      recurrenceType: map['recurrenceType'],
+      recurrenceEndDate: map['recurrenceEndDate'] != null
+          ? DateTime.parse(map['recurrenceEndDate'])
+          : null,
+      lastAppliedDate: map['lastAppliedDate'] != null
+          ? DateTime.parse(map['lastAppliedDate'])
+          : null,
     );
   }
 }
