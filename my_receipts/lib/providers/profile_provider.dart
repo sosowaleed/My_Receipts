@@ -53,9 +53,9 @@ class ProfileProvider with ChangeNotifier {
     if (_allProfiles.isNotEmpty) {
       // Make sure a profile is selected before loading its categories
       final profileToLoad = _currentProfile?.id ?? _allProfiles.first.id!;
-      if (_transactions.isNotEmpty) {
-        await RecurrenceService().processRecurrentTransactions(profileToLoad);
-      }
+
+      await RecurrenceService().processRecurrentTransactions(profileToLoad);
+
       await switchProfile(profileToLoad);
     } else {
       // Clear data if no profiles exist
