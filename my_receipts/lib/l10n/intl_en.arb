@@ -56,5 +56,16 @@
   "weekly": "Weekly",
   "monthly": "Monthly",
   "endDateOptional": "End Date (Optional)",
-  "noEndDate": "No End Date"
+  "noEndDate": "No End Date",
+  "financialDashboard": "Financial Dashboard",
+  "last30DaysSummary": "Last 30 Days Summary",
+  "income": "Income",
+  "expenses": "Expenses",
+  "netSavings": "Net Savings",
+  "monthlyOverview": "Monthly Overview (Last 6 Months)",
+  "expenseBreakdown": "Expense Breakdown (Last 30 Days)",
+  "financialProjection": "Financial Projection",
+  "months": "months",
+  "noDataForPeriod": "No {dataType} data for this period.",
+  "uncategorized": "Uncategorized"
 }

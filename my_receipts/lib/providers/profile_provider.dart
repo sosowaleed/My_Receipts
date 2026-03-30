@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hijri/hijri_calendar.dart';
+import 'package:intl/intl.dart';
 import 'package:my_receipts/models/category.dart';
 import 'package:my_receipts/models/profile.dart';
 import 'package:my_receipts/models/transaction.dart';
 import 'package:my_receipts/services/database_service.dart';
 import 'package:my_receipts/services/recurrence_service.dart';
+import 'package:collection/collection.dart';
 
 class ProfileProvider with ChangeNotifier {
   Profile? _currentProfile;
@@ -169,5 +171,61 @@ class ProfileProvider with ChangeNotifier {
     if (_currentProfile == null) return;
     await DatabaseService.instance.deleteTransactionsForHijriYear(_currentProfile!.id!, hYear);
     await refreshCurrentProfile();
+  }
+
+  /// Calculates summary data for transactions within a date range.
+  Map<String, double> getSummaryForPeriod(DateTime start, DateTime end) {
+    double income = 0;
+    double expenses = 0;
+    final relevantTxs = _transactions.where((tx) =>
+    !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end));
+
+    for (var tx in relevantTxs) {
+      if (tx.type == TransactionType.income) {
+        income += tx.amount;
+      } else {
+        expenses += tx.amount;
+      }
+    }
+    return {'income': income, 'expenses': expenses, 'net': income - expenses};
+  }
+
+  /// Groups expenses by category for the pie chart.
+  Map<String, double> getExpenseByCategory(DateTime start, DateTime end) {
+    final relevantTxs = _transactions.where((tx) =>
+    tx.type == TransactionType.outgoing &&
+        !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end));
+
+    final grouped = groupBy(relevantTxs, (Transaction tx) => tx.categoryName ?? 'Uncategorized');
+
+    return grouped.map((key, value) => MapEntry(key, value.fold(0.0, (sum, tx) => sum + tx.amount)));
+  }
+
+  /// Gets monthly income/expense totals for the bar chart.
+  /// Returns a map where key is month (YYYY-MM) and value is another map {'income': X, 'expenses': Y}
+  Map<String, Map<String, double>> getMonthlyTotals(int monthsToGoBack) {
+    final now = DateTime.now();
+    final data = <String, Map<String, double>>{};
+
+    for (int i = monthsToGoBack - 1; i >= 0; i--) {
+      final date = DateTime(now.year, now.month - i, 1);
+      final monthKey = DateFormat('yyyy-MM').format(date);
+      data[monthKey] = {'income': 0.0, 'expenses': 0.0};
+    }
+
+    final cutoffDate = DateTime(now.year, now.month - (monthsToGoBack - 1), 1);
+    final relevantTxs = _transactions.where((tx) => !tx.timestamp.isBefore(cutoffDate));
+
+    for (var tx in relevantTxs) {
+      final monthKey = DateFormat('yyyy-MM').format(tx.timestamp);
+      if (data.containsKey(monthKey)) {
+        if (tx.type == TransactionType.income) {
+          data[monthKey]!['income'] = (data[monthKey]!['income'] ?? 0) + tx.amount;
+        } else {
+          data[monthKey]!['expenses'] = (data[monthKey]!['expenses'] ?? 0) + tx.amount;
+        }
+      }
+    }
+    return data;
   }
 }

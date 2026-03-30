@@ -56,5 +56,16 @@
   "weekly": "أسبوعي",
   "monthly": "شهري",
   "endDateOptional": "تاريخ الانتهاء (اختياري)",
-  "noEndDate": "بدون تاريخ انتهاء"
+  "noEndDate": "بدون تاريخ انتهاء",
+  "financialDashboard": "لوحة المعلومات المالية",
+  "last30DaysSummary": "ملخص آخر 30 يومًا",
+  "income": "الدخل",
+  "expenses": "المصروفات",
+  "netSavings": "صافي الادخار",
+  "monthlyOverview": "نظرة عامة شهرية (آخر 6 أشهر)",
+  "expenseBreakdown": "تفصيل المصروفات (آخر 30 يومًا)",
+  "financialProjection": "التوقعات المالية",
+  "months": "أشهر",
+  "noDataForPeriod": "لا توجد بيانات {dataType} لهذه الفترة.",
+  "uncategorized": "غير مصنف"
 }

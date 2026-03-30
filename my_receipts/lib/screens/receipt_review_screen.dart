@@ -8,6 +8,7 @@ import 'package:hijri/hijri_calendar.dart';
 import 'package:collection/collection.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/transaction_overlay.dart';
+import 'financial_dashboard_screen.dart';
 
 class ReceiptReviewScreen extends StatefulWidget {
   const ReceiptReviewScreen({super.key});
@@ -266,6 +267,23 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
             },
           );
         },
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.bar_chart),
+            label: Text(l10n.financialDashboard),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FinancialDashboardScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+            ),
+          ),
+        ),
       ),
     );
   }
