@@ -519,6 +519,96 @@ class S {
   String get noEndDate {
     return Intl.message('No End Date', name: 'noEndDate', desc: '', args: []);
   }
+
+  /// `Financial Dashboard`
+  String get financialDashboard {
+    return Intl.message(
+      'Financial Dashboard',
+      name: 'financialDashboard',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last 30 Days Summary`
+  String get last30DaysSummary {
+    return Intl.message(
+      'Last 30 Days Summary',
+      name: 'last30DaysSummary',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Income`
+  String get income {
+    return Intl.message('Income', name: 'income', desc: '', args: []);
+  }
+
+  /// `Expenses`
+  String get expenses {
+    return Intl.message('Expenses', name: 'expenses', desc: '', args: []);
+  }
+
+  /// `Net Savings`
+  String get netSavings {
+    return Intl.message('Net Savings', name: 'netSavings', desc: '', args: []);
+  }
+
+  /// `Monthly Overview (Last 6 Months)`
+  String get monthlyOverview {
+    return Intl.message(
+      'Monthly Overview (Last 6 Months)',
+      name: 'monthlyOverview',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Expense Breakdown (Last 30 Days)`
+  String get expenseBreakdown {
+    return Intl.message(
+      'Expense Breakdown (Last 30 Days)',
+      name: 'expenseBreakdown',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Financial Projection`
+  String get financialProjection {
+    return Intl.message(
+      'Financial Projection',
+      name: 'financialProjection',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `months`
+  String get months {
+    return Intl.message('months', name: 'months', desc: '', args: []);
+  }
+
+  /// `No {dataType} data for this period.`
+  String noDataForPeriod(Object dataType) {
+    return Intl.message(
+      'No $dataType data for this period.',
+      name: 'noDataForPeriod',
+      desc: '',
+      args: [dataType],
+    );
+  }
+
+  /// `Uncategorized`
+  String get uncategorized {
+    return Intl.message(
+      'Uncategorized',
+      name: 'uncategorized',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {
