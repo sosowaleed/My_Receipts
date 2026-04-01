@@ -5,7 +5,7 @@ class RecurrenceService {
   final dbService = DatabaseService.instance;
 
   Future<void> processRecurrentTransactions(int profileId) async {
-    final recurrentTxs = await dbService.readAllRecurrentTransactions(profileId);
+    final recurrentTxs = await dbService.readActiveRecurrentTransactions(profileId);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 

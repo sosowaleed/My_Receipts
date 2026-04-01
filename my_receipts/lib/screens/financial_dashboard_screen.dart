@@ -4,6 +4,7 @@ import 'package:my_receipts/providers/profile_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:my_receipts/services/projection_service.dart';
 
 class FinancialDashboardScreen extends StatefulWidget {
   const FinancialDashboardScreen({super.key});
@@ -16,9 +17,15 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
   // State for the projection
   double _projectionMonths = 12; // Default projection for 1 year
   // Define colors for the pie chart to be used by the chart and the legend
+  //Expense colors
   final List<Color> _pieChartColors = [
     Colors.blue, Colors.orange, Colors.purple, Colors.teal, Colors.pink,
     Colors.amber, Colors.cyan
+  ];
+  // Income colors
+  final List<Color> _incomePieChartColors = [
+    Colors.green.shade700, Colors.lightGreen.shade500, Colors.teal.shade400,
+    Colors.cyan.shade600, Colors.lime.shade700
   ];
 
   @override
@@ -70,12 +77,29 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 250,
-              child: _buildPieChart(context, provider.getExpenseByCategory(last30DaysStart, now)),
+              child: _buildPieChart(context, provider.getExpenseByCategory(last30DaysStart, now), _pieChartColors),
             ),
-            _buildPieChartLegend(context, provider.getExpenseByCategory(last30DaysStart, now)),
+            _buildPieChartLegend(context, provider.getExpenseByCategory(last30DaysStart, now), _pieChartColors),
+            const Divider(height: 32),
+            // --- 4. EARNINGS BREAKDOWN PIE CHART ---
+            Text(l10n.earningsBreakdown, style: Theme.of(context).textTheme.titleLarge), // Add to localization files
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 250,
+              child: _buildPieChart(
+                context,
+                provider.getIncomeByCategory(last30DaysStart, now),
+                _incomePieChartColors, // Pass the new income colors
+              ),
+            ),
+            _buildPieChartLegend(
+              context,
+              provider.getIncomeByCategory(last30DaysStart, now),
+              _incomePieChartColors, // Pass the new income colors
+            ),
             const Divider(height: 32),
 
-            // --- 4. FINANCIAL PROJECTION ---
+            // --- 5. FINANCIAL PROJECTION ---
             Text(l10n.financialProjection, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             SizedBox(
@@ -160,24 +184,24 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
     );
   }
 
-  Widget _buildPieChart(BuildContext context, Map<String, double> expenseData) {
+  Widget _buildPieChart(BuildContext context, Map<String, double> data, List<Color> colors) {
     final l10n = AppLocalizations.of(context)!;
-    if (expenseData.isEmpty) {
-      return Center(child: Text(l10n.noDataForPeriod('expense')));
+    if (data.isEmpty) {
+      return Center(child: Text(l10n.noDataForPeriod('chart')));
     }
-    final totalExpenses = expenseData.values.fold(0.0, (sum, item) => sum + item);
-    if (totalExpenses == 0) {
-      return Center(child: Text(l10n.noDataForPeriod('expense')));
+    final totalValue = data.values.fold(0.0, (sum, item) => sum + item);
+    if (totalValue == 0) {
+      return Center(child: Text(l10n.noDataForPeriod('chart')));
     }
 
     final List<PieChartSectionData> sections = [];
     int colorIndex = 0;
 
-    expenseData.forEach((category, amount) {
-      final percentage = (amount / totalExpenses) * 100;
+    data.forEach((category, amount) {
+      final percentage = (amount / totalValue) * 100;
       sections.add(
         PieChartSectionData(
-          color: _pieChartColors[colorIndex % _pieChartColors.length],
+          color: colors[colorIndex % colors.length],
           value: amount,
           title: '${percentage.toStringAsFixed(0)}%',
           radius: 80,
@@ -196,61 +220,67 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
     );
   }
 
-  Widget _buildPieChartLegend(BuildContext context, Map<String, double> expenseData) {
-    if (expenseData.isEmpty) return const SizedBox.shrink();
+  Widget _buildPieChartLegend(BuildContext context, Map<String, double> data, List<Color> colors) {
+    if (data.isEmpty) return const SizedBox.shrink();
 
     int colorIndex = 0;
     final l10n = AppLocalizations.of(context)!;
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: expenseData.keys.map((category) {
-        final widget = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 16, height: 16, color: _pieChartColors[colorIndex % _pieChartColors.length]),
-            const SizedBox(width: 4),
-            Text(category == 'Uncategorized' ? l10n.uncategorized : category),
-          ],
-        );
-        colorIndex++;
-        return widget;
-      }).toList(),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: data.keys.map((category) {
+          final widget = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 16, height: 16, color: colors[colorIndex % colors.length]),
+              const SizedBox(width: 4),
+              Text(category == 'Uncategorized' ? l10n.uncategorized : category),
+            ],
+          );
+          colorIndex++;
+          return widget;
+        }).toList(),
+      ),
     );
   }
 
   Widget _buildProjectionChart(BuildContext context, ProfileProvider provider) {
-    final now = DateTime.now();
-    final currentBalance = provider.currentProfile?.walletAmount ?? 0.0;
-    //final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context)!;
 
-    // Projection Logic
-    final last3MonthsStart = DateTime(now.year, now.month - 3, now.day);
-    final summary3Months = provider.getSummaryForPeriod(last3MonthsStart, now);
-    final avgMonthlySavings = (summary3Months['net'] ?? 0.0) / 3.0;
+    // --- Use the new ProjectionService ---
+    final projectionService = ProjectionService();
+    final List<FlSpot> spots = projectionService.generateProjection(
+      currentBalance: provider.currentProfile?.walletAmount ?? 0.0,
+      historicalTransactions: provider.transactions,
+      activeRecurrentTransactions: provider.activeRecurrentTransactions,
+      monthsToProject: _projectionMonths.round(),
+    );
 
-    // In a full implementation, you'd calculate the net monthly change of active recurrent transactions.
-    // We'll assume it's part of the historical average for this version.
-    final totalMonthlyChange = avgMonthlySavings;
-
-    final List<FlSpot> spots = [FlSpot(0, currentBalance)];
-    for (int i = 1; i <= _projectionMonths.round(); i++) {
-      final projectedBalance = currentBalance + (totalMonthlyChange * i);
-      spots.add(FlSpot(i.toDouble(), projectedBalance));
+    if (spots.length < 2) {
+      return Center(child: Text(l10n.noDataForPeriod('projection')));
     }
 
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: true),
         titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
-            if (value.toInt() % 6 == 0) { // Show label every 6 months
-              return SideTitleWidget(axisSide: meta.axisSide, child: Text("${value.toInt()}m"));
-            }
-            return const SizedBox.shrink();
-          }, reservedSize: 30)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() % 6 == 0) { // Show label every 6 months
+                  return SideTitleWidget(
+                      axisSide: meta.axisSide, child: Text("${value.toInt()}m"));
+                }
+                return const SizedBox.shrink();
+              },
+              reservedSize: 30,
+            ),
+          ),
           leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 60)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -260,10 +290,13 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: Colors.blue,
+            color: Theme.of(context).colorScheme.primary,
             barWidth: 4,
             dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(show: true, color: Colors.blue.withOpacity(0.3)),
+            belowBarData: BarAreaData(
+              show: true,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            ),
           ),
         ],
       ),

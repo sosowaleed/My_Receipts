@@ -67,5 +67,6 @@
   "financialProjection": "التوقعات المالية",
   "months": "أشهر",
   "noDataForPeriod": "لا توجد بيانات {dataType} لهذه الفترة.",
-  "uncategorized": "غير مصنف"
+  "uncategorized": "غير مصنف",
+  "earningsBreakdown": "تفصيل الدخل (آخر 30 يومًا)"
 }

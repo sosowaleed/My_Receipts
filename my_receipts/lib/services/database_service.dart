@@ -115,13 +115,25 @@ class DatabaseService {
     }
   }
 
-  // Read all recurrent transactions for a given profile
+ /* // Read all recurrent transactions for a given profile
   Future<List<Transaction>> readAllRecurrentTransactions(int profileId) async {
     final db = await instance.database;
     final result = await db.query(
       'transactions',
       where: 'profileId = ? AND isRecurrent = 1',
       whereArgs: [profileId],
+    );
+    return result.map((json) => Transaction.fromMap(json)).toList();
+  }
+  */
+  Future<List<Transaction>> readActiveRecurrentTransactions(int profileId) async {
+    final db = await instance.database;
+    final today = DateTime.now().toIso8601String().split('T').first;
+    final result = await db.query(
+      'transactions',
+      // isRecurrent = 1 AND (endDate is NULL OR endDate is in the future)
+      where: 'profileId = ? AND isRecurrent = 1 AND (recurrenceEndDate IS NULL OR recurrenceEndDate >= ?)',
+      whereArgs: [profileId, today],
     );
     return result.map((json) => Transaction.fromMap(json)).toList();
   }

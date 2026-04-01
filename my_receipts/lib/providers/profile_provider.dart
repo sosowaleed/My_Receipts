@@ -26,6 +26,10 @@ class ProfileProvider with ChangeNotifier {
   bool get hasProfiles => _allProfiles.isNotEmpty;
   Locale get appLocale => _appLocale;
 
+  List<Transaction> _activeRecurrentTransactions = [];
+
+  List<Transaction> get activeRecurrentTransactions => _activeRecurrentTransactions;
+
   ProfileProvider() {
     _setHijriLocale(_appLocale);
     loadInitialData();
@@ -80,6 +84,8 @@ class ProfileProvider with ChangeNotifier {
     _outgoingCategories = await DatabaseService.instance.readAllCategoriesForProfile(profileId, TransactionType.outgoing);
 
     _allProfiles = await DatabaseService.instance.readAllProfiles();
+    _activeRecurrentTransactions = await DatabaseService.instance.readActiveRecurrentTransactions(profileId);
+
     notifyListeners();
   }
 
@@ -107,6 +113,7 @@ class ProfileProvider with ChangeNotifier {
     if (_currentProfile != null) {
       _currentProfile = await DatabaseService.instance.readProfile(_currentProfile!.id!);
       _transactions = await DatabaseService.instance.readTransactionsForProfile(_currentProfile!.id!);
+      _activeRecurrentTransactions = await DatabaseService.instance.readActiveRecurrentTransactions(_currentProfile!.id!);
       notifyListeners();
     }
   }
@@ -194,6 +201,17 @@ class ProfileProvider with ChangeNotifier {
   Map<String, double> getExpenseByCategory(DateTime start, DateTime end) {
     final relevantTxs = _transactions.where((tx) =>
     tx.type == TransactionType.outgoing &&
+        !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end));
+
+    final grouped = groupBy(relevantTxs, (Transaction tx) => tx.categoryName ?? 'Uncategorized');
+
+    return grouped.map((key, value) => MapEntry(key, value.fold(0.0, (sum, tx) => sum + tx.amount)));
+  }
+
+  /// Groups income by category for the pie chart.
+  Map<String, double> getIncomeByCategory(DateTime start, DateTime end) {
+    final relevantTxs = _transactions.where((tx) =>
+    tx.type == TransactionType.income && // The only change is filtering for income
         !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end));
 
     final grouped = groupBy(relevantTxs, (Transaction tx) => tx.categoryName ?? 'Uncategorized');

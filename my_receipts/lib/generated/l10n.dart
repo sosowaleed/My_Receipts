@@ -609,6 +609,16 @@ class S {
       args: [],
     );
   }
+
+  /// `Earnings Breakdown (Last 30 Days)`
+  String get earningsBreakdown {
+    return Intl.message(
+      'Earnings Breakdown (Last 30 Days)',
+      name: 'earningsBreakdown',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -27,6 +27,8 @@ class MessageLookup extends MessageLookupByLibrary {
 
   static String m2(path) => "Data exported successfully to ${path}";
 
+  static String m3(dataType) => "No ${dataType} data for this period.";
+
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
     "addAnother": MessageLookupByLibrary.simpleMessage("Add Another Receipt"),
@@ -47,11 +49,18 @@ class MessageLookup extends MessageLookupByLibrary {
     "confirmDeleteTransaction": MessageLookupByLibrary.simpleMessage(
       "Are you sure you want to delete this transaction?",
     ),
+    "daily": MessageLookupByLibrary.simpleMessage("Daily"),
     "delete": MessageLookupByLibrary.simpleMessage("Delete"),
     "deleteProfile": MessageLookupByLibrary.simpleMessage("Delete Profile"),
     "description": MessageLookupByLibrary.simpleMessage("Description"),
+    "earningsBreakdown": MessageLookupByLibrary.simpleMessage(
+      "Earnings Breakdown (Last 30 Days)",
+    ),
     "edit": MessageLookupByLibrary.simpleMessage("Edit"),
     "editTransaction": MessageLookupByLibrary.simpleMessage("Edit Transaction"),
+    "endDateOptional": MessageLookupByLibrary.simpleMessage(
+      "End Date (Optional)",
+    ),
     "enterCategoryName": MessageLookupByLibrary.simpleMessage(
       "Enter Category Name",
     ),
@@ -61,8 +70,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "errorInvalidNumber": MessageLookupByLibrary.simpleMessage(
       "Please enter a valid number.",
     ),
+    "expenseBreakdown": MessageLookupByLibrary.simpleMessage(
+      "Expense Breakdown (Last 30 Days)",
+    ),
+    "expenses": MessageLookupByLibrary.simpleMessage("Expenses"),
     "exportAction": MessageLookupByLibrary.simpleMessage("Export to CSV"),
     "exportSuccess": m2,
+    "financialDashboard": MessageLookupByLibrary.simpleMessage(
+      "Financial Dashboard",
+    ),
+    "financialProjection": MessageLookupByLibrary.simpleMessage(
+      "Financial Projection",
+    ),
+    "frequency": MessageLookupByLibrary.simpleMessage("Frequency"),
     "gregorian": MessageLookupByLibrary.simpleMessage("Gregorian"),
     "hijri": MessageLookupByLibrary.simpleMessage("Hijri"),
     "homeImportExport": MessageLookupByLibrary.simpleMessage("Import/Export"),
@@ -82,11 +102,24 @@ class MessageLookup extends MessageLookupByLibrary {
     "importSuccess": MessageLookupByLibrary.simpleMessage(
       "Data imported successfully!",
     ),
+    "income": MessageLookupByLibrary.simpleMessage("Income"),
     "incomeOverlayTitle": MessageLookupByLibrary.simpleMessage("New Income"),
     "initialWallet": MessageLookupByLibrary.simpleMessage(
       "Initial Wallet Amount",
     ),
+    "last30DaysSummary": MessageLookupByLibrary.simpleMessage(
+      "Last 30 Days Summary",
+    ),
+    "monthly": MessageLookupByLibrary.simpleMessage("Monthly"),
+    "monthlyOverview": MessageLookupByLibrary.simpleMessage(
+      "Monthly Overview (Last 6 Months)",
+    ),
+    "months": MessageLookupByLibrary.simpleMessage("months"),
+    "netSavings": MessageLookupByLibrary.simpleMessage("Net Savings"),
+    "noDataForPeriod": m3,
+    "noEndDate": MessageLookupByLibrary.simpleMessage("No End Date"),
     "ok": MessageLookupByLibrary.simpleMessage("OK"),
+    "once": MessageLookupByLibrary.simpleMessage("Once"),
     "outgoingOverlayTitle": MessageLookupByLibrary.simpleMessage(
       "New Outgoing",
     ),
@@ -98,6 +131,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "quantity": MessageLookupByLibrary.simpleMessage("Quantity"),
     "receiptReviewTitle": MessageLookupByLibrary.simpleMessage(
       "Receipt History",
+    ),
+    "recurrent": MessageLookupByLibrary.simpleMessage("Recurrent"),
+    "recurrentTransaction": MessageLookupByLibrary.simpleMessage(
+      "Recurrent Transaction",
     ),
     "save": MessageLookupByLibrary.simpleMessage("Save"),
     "selectExportLocation": MessageLookupByLibrary.simpleMessage(
@@ -116,5 +153,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "transactionUpdated": MessageLookupByLibrary.simpleMessage(
       "Transaction updated!",
     ),
+    "uncategorized": MessageLookupByLibrary.simpleMessage("Uncategorized"),
+    "weekly": MessageLookupByLibrary.simpleMessage("Weekly"),
   };
 }

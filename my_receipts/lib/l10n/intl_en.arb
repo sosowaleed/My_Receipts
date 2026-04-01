@@ -67,5 +67,6 @@
   "financialProjection": "Financial Projection",
   "months": "months",
   "noDataForPeriod": "No {dataType} data for this period.",
-  "uncategorized": "Uncategorized"
+  "uncategorized": "Uncategorized",
+  "earningsBreakdown": "Earnings Breakdown (Last 30 Days)"
 }
