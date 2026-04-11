@@ -10,173 +10,146 @@ import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
 import '../models/transaction.dart';
 import '../widgets/Charts/projection_linechart.dart';
 
-
-class ComparisonDashboardScreen extends StatelessWidget {
+class ComparisonDashboardScreen extends StatefulWidget {
   final Sim simulationToCompare;
   const ComparisonDashboardScreen({super.key, required this.simulationToCompare});
 
   @override
+  State<ComparisonDashboardScreen> createState() => _ComparisonDashboardScreenState();
+}
+
+class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
+  double _projectionMonths = 12.0;
+
+  // Chart Colors as constants or themed getters
+  static const List<Color> _expenseColors = [
+    Colors.blue, Colors.orange, Colors.purple, Colors.teal, Colors.pink,
+    Colors.amber, Colors.cyan
+  ];
+
+  final List<Color> _incomeColors = [
+    Colors.green.shade700, Colors.lightGreen.shade500, Colors.teal.shade400,
+    Colors.cyan.shade600, Colors.lime.shade700
+  ];
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    // We get the real data from ProfileProvider
     final profileProvider = context.watch<ProfileProvider>();
-    // We get the simulated data from SimulationProvider
     final simProvider = context.watch<SimulationProvider>();
 
-    // Create Chart Data Adapters for both original and simulated data
-    final originalDataAdapter = ChartDataAdapter(transactions: profileProvider.transactions);
-    final simulatedDataAdapter = ChartDataAdapter(transactions: simProvider.simulatedTransactions);
+    // 1. Prepare Data Adapters
+    final originalAdapter = ChartDataAdapter(transactions: profileProvider.transactions);
+    final simulatedAdapter = ChartDataAdapter(transactions: simProvider.simulatedTransactions);
 
-    // Calculate the "current" balance of the simulation.
-    // This is a conceptual calculation: what would the balance be today if we
-    // applied all simulated transactions to the original profile's starting balance.
-    // We'll use the final balance of the real provider as the base.
+    // 2. Calculate Balances
     final realFinalBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
-    // We can't easily know the "initial" balance, so for comparison, we'll
-    // calculate the *difference* in net income between the two sets of transactions
-    // and apply that difference to the real current balance.
-    final realNet = originalDataAdapter.transactions.fold(0.0, (sum, tx) => sum + (tx.type == TransactionType.income ? tx.amount : -tx.amount));
-    final simNet = simulatedDataAdapter.transactions.fold(0.0, (sum, tx) => sum + (tx.type == TransactionType.income ? tx.amount : -tx.amount));
-    final netDifference = simNet - realNet;
-    final simulatedCurrentBalance = realFinalBalance + netDifference;
 
-    final List<Color> pieChartColors = [
-      Colors.blue, Colors.orange, Colors.purple, Colors.teal, Colors.pink,
-      Colors.amber, Colors.cyan
-    ];
-    // Income colors
-    final List<Color> incomePieChartColors = [
-      Colors.green.shade700, Colors.lightGreen.shade500, Colors.teal.shade400,
-      Colors.cyan.shade600, Colors.lime.shade700
-    ];
+    // Efficiency: Calculate nets once per build
+    double calculateNet(List<Transaction> txs) => txs.fold(0.0, (sum, tx) =>
+    sum + (tx.type == TransactionType.income ? tx.amount : -tx.amount));
+
+    final realNet = calculateNet(originalAdapter.transactions);
+    final simNet = calculateNet(simulatedAdapter.transactions);
+    final simulatedCurrentBalance = realFinalBalance + (simNet - realNet);
+
+    final simActiveRecurrentTxs = simProvider.simulatedTransactions.where((tx) =>
+    tx.isRecurrent && (tx.recurrenceEndDate == null || tx.recurrenceEndDate!.isAfter(DateTime.now()))
+    ).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("${l10n.original} vs. ${simulationToCompare.name}"),
+        title: Text("${l10n.original} vs. ${widget.simulationToCompare.name}"),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final bool isWide = constraints.maxWidth > 720; // A common breakpoint
+          final bool isWide = constraints.maxWidth > 720;
 
           return ListView(
             padding: const EdgeInsets.all(8.0),
             children: [
-              // Here you would build each comparison section
+              // Monthly Overview
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
                 title: l10n.monthlyOverview,
-                originalWidget: MonthlyOverviewBarChart(monthlyTotals: originalDataAdapter.getMonthlyTotals(6)),
-                simulatedWidget: MonthlyOverviewBarChart(monthlyTotals: simulatedDataAdapter.getMonthlyTotals(6)),
+                originalWidget: MonthlyOverviewBarChart(monthlyTotals: originalAdapter.getMonthlyTotals(6)),
+                simulatedWidget: MonthlyOverviewBarChart(monthlyTotals: simulatedAdapter.getMonthlyTotals(6)),
               ),
+
+              // Expense Breakdown
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
                 title: l10n.expenseBreakdown,
-                originalWidget: Column(
-                  children: [
-                    SizedBox(
-                      height: 250, // Adjust height for comparison view
-                      child: CategoryBreakdownPieChart(
-                        categoryData: originalDataAdapter.getExpenseByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                        colors: pieChartColors, // Define colors
-                        noDataText: l10n.noDataForPeriod(l10n.expenses),
-                      ),
-                    ),
-                    PieChartLegend(
-                      categoryData: originalDataAdapter.getExpenseByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                      colors: pieChartColors,
-                    )
-                  ],
+                originalWidget: _BreakdownSection(
+                  adapter: originalAdapter,
+                  isIncome: false,
+                  colors: _expenseColors,
+                  l10n: l10n,
                 ),
-                simulatedWidget: Column(
-                  children: [
-                    SizedBox(
-                      height: 250,
-                      child: CategoryBreakdownPieChart(
-                        categoryData: simulatedDataAdapter.getExpenseByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                        colors: pieChartColors,
-                        noDataText: l10n.noDataForPeriod(l10n.expenses),
-                      ),
-                    ),
-                    PieChartLegend(
-                      categoryData: simulatedDataAdapter.getExpenseByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                      colors: pieChartColors,
-                    )
-                  ],
+                simulatedWidget: _BreakdownSection(
+                  adapter: simulatedAdapter,
+                  isIncome: false,
+                  colors: _expenseColors,
+                  l10n: l10n,
                 ),
               ),
+
+              // Earnings Breakdown
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
                 title: l10n.earningsBreakdown,
-                originalWidget: Column(
-                  children: [
-                    SizedBox(
-                      height: 250, // Adjust height for comparison view
-                      child: CategoryBreakdownPieChart(
-                        categoryData: originalDataAdapter.getIncomeByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                        colors: incomePieChartColors, // Define colors
-                        noDataText: l10n.noDataForPeriod(l10n.income),
-                      ),
-                    ),
-                    PieChartLegend(
-                      categoryData: originalDataAdapter.getIncomeByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                      colors: incomePieChartColors,
-                    )
-                  ],
+                originalWidget: _BreakdownSection(
+                  adapter: originalAdapter,
+                  isIncome: true,
+                  colors: _incomeColors,
+                  l10n: l10n,
                 ),
-                simulatedWidget: Column(
-                  children: [
-                    SizedBox(
-                      height: 250,
-                      child: CategoryBreakdownPieChart(
-                        categoryData: simulatedDataAdapter.getIncomeByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                        colors: incomePieChartColors,
-                        noDataText: l10n.noDataForPeriod(l10n.income),
-                      ),
-                    ),
-                    PieChartLegend(
-                      categoryData: simulatedDataAdapter.getIncomeByCategory(DateTime.now().subtract(const Duration(days: 30)), DateTime.now()),
-                      colors: incomePieChartColors,
-                    ),
-                  ],
+                simulatedWidget: _BreakdownSection(
+                  adapter: simulatedAdapter,
+                  isIncome: true,
+                  colors: _incomeColors,
+                  l10n: l10n,
                 ),
               ),
+
+              // Financial Projection
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
                 title: l10n.financialProjection,
-                originalWidget: SizedBox( // Give it a fixed height
-                  height: 300,
-                  child: ProjectionLineChart(
-                    currentBalance: realFinalBalance,
-                    historicalTransactions: profileProvider.transactions,
-                    // Pass the real active recurrent transactions
-                    activeRecurrentTransactions: profileProvider.activeRecurrentTransactions,
-                    // Let's use a fixed 12-month projection for comparison
-                    monthsToProject: 12,
-                  ),
+                // Move Slider here so it's above both charts and affects both
+                topControl: Column(
+                  children: [
+                    Text("${l10n.projectionPeriod}: ${_projectionMonths.round()} ${l10n.months}"),
+                    Slider(
+                      value: _projectionMonths,
+                      min: 1, max: 60, divisions: 59,
+                      onChanged: (val) => setState(() => _projectionMonths = val),
+                    ),
+                  ],
                 ),
-                simulatedWidget: SizedBox(
-                  height: 300,
-                  child: ProjectionLineChart(
-                    currentBalance: simulatedCurrentBalance,
-                    historicalTransactions: simProvider.simulatedTransactions,
-                    // Simulations don't have recurrent transactions in our current model, so pass an empty list.
-                    activeRecurrentTransactions: const [],
-                    monthsToProject: 12,
-                  ),
+                originalWidget: ProjectionLineChart(
+                  currentBalance: realFinalBalance,
+                  historicalTransactions: profileProvider.transactions,
+                  activeRecurrentTransactions: profileProvider.activeRecurrentTransactions,
+                  monthsToProject: _projectionMonths.toInt(),
+                ),
+                simulatedWidget: ProjectionLineChart(
+                  currentBalance: simulatedCurrentBalance,
+                  historicalTransactions: simProvider.simulatedTransactions,
+                  activeRecurrentTransactions: simActiveRecurrentTxs,
+                  monthsToProject: _projectionMonths.toInt(),
                 ),
               ),
             ],
           );
-        }
-
+        },
       ),
     );
   }
-
 
   Widget _buildComparisonCard({
     required BuildContext context,
@@ -184,58 +157,92 @@ class ComparisonDashboardScreen extends StatelessWidget {
     required String title,
     required Widget originalWidget,
     required Widget simulatedWidget,
-    Widget? originalLegend, // Optional legend
-    Widget? simulatedLegend, // Optional legend
+    Widget? topControl,
   }) {
     final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
 
-    final originalSection = Column(
-      children: [
-        Text(l10n.original, style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: 300, child: originalWidget), // Reduced height
-        if (originalLegend != null) originalLegend,
-      ],
-    );
-
-    final simulatedSection = Column(
-      children: [
-        Text(l10n.simulation, style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: 300, child: simulatedWidget), // Reduced height
-        if (simulatedLegend != null) simulatedLegend,
-      ],
-    );
+    Widget buildSubSection(String label, Widget child) {
+      return Column(
+        children: [
+          Text(label, style: textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SizedBox(height: 300, child: child),
+        ],
+      );
+    }
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          // This Column should not be constrained in height
-          mainAxisSize: MainAxisSize.min, // Allow it to be as tall as its children
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            Text(title, style: textTheme.titleLarge),
+            if (topControl != null) ...[
+              const SizedBox(height: 8),
+              topControl,
+            ],
             const SizedBox(height: 16),
-            isWide
-                ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: originalSection),
-                const SizedBox(width: 16),
-                Expanded(child: simulatedSection),
-              ],
-            )
-                : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                originalSection,
-                const SizedBox(height: 24),
-                simulatedSection,
-              ],
-            ),
+            if (isWide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: buildSubSection(l10n.original, originalWidget)),
+                  const SizedBox(width: 24),
+                  Expanded(child: buildSubSection(l10n.simulation, simulatedWidget)),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  buildSubSection(l10n.original, originalWidget),
+                  const Divider(height: 48),
+                  buildSubSection(l10n.simulation, simulatedWidget),
+                ],
+              ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Helper widget to reduce duplication in Pie Chart sections
+class _BreakdownSection extends StatelessWidget {
+  final ChartDataAdapter adapter;
+  final bool isIncome;
+  final List<Color> colors;
+  final AppLocalizations l10n;
+
+  const _BreakdownSection({
+    required this.adapter,
+    required this.isIncome,
+    required this.colors,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final lastMonth = now.subtract(const Duration(days: 30));
+
+    final categoryData = isIncome
+        ? adapter.getIncomeByCategory(lastMonth, now)
+        : adapter.getExpenseByCategory(lastMonth, now);
+
+    return Column(
+      children: [
+        Expanded(
+          child: CategoryBreakdownPieChart(
+            categoryData: categoryData,
+            colors: colors,
+            noDataText: l10n.noDataForPeriod(isIncome ? l10n.income : l10n.expenses),
+          ),
+        ),
+        PieChartLegend(categoryData: categoryData, colors: colors),
+      ],
     );
   }
 }

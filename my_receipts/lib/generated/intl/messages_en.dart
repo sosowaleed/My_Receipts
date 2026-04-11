@@ -162,6 +162,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "profileName": MessageLookupByLibrary.simpleMessage("Profile Name"),
     "profiles": MessageLookupByLibrary.simpleMessage("Profiles"),
+    "projectionPeriod": MessageLookupByLibrary.simpleMessage(
+      "Projection Period",
+    ),
     "promptScreenTitle": MessageLookupByLibrary.simpleMessage(
       "Create Your Profile",
     ),

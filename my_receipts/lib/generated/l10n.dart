@@ -789,6 +789,16 @@ class S {
       args: [original, simulation],
     );
   }
+
+  /// `Projection Period`
+  String get projectionPeriod {
+    return Intl.message(
+      'Projection Period',
+      name: 'projectionPeriod',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -22,7 +22,7 @@ class DatabaseService {
   Future<sql.Database> _initDB(String filePath) async {
     final dbPath = await sql.getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await sql.openDatabase(path, version: 5, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await sql.openDatabase(path, version: 6, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _createDB(sql.Database db, int version) async {
@@ -85,15 +85,17 @@ class DatabaseService {
       CREATE TABLE simulated_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         simulationId INTEGER NOT NULL,
-        -- These columns mirror the real transactions table
-        profileId INTEGER NOT NULL, 
+        profileId INTEGER NOT NULL,
         type TEXT NOT NULL,
         amount REAL NOT NULL,
         description TEXT NOT NULL,
         categoryId INTEGER NOT NULL,
         quantity INTEGER NOT NULL,
         timestamp TEXT NOT NULL,
-        -- Recurrence is not needed for simulation for now to keep it simple
+        isRecurrent INTEGER NOT NULL DEFAULT 0,
+        recurrenceType TEXT,
+        recurrenceEndDate TEXT,
+        lastAppliedDate TEXT,
         FOREIGN KEY (simulationId) REFERENCES simulations (id) ON DELETE CASCADE
       )
     ''');
@@ -170,6 +172,14 @@ class DatabaseService {
           FOREIGN KEY (simulationId) REFERENCES simulations (id) ON DELETE CASCADE
         )
       ''');
+    }
+
+    if (oldVersion < 6) {
+      // Add recurrence columns to the simulated_transactions table
+      await db.execute('ALTER TABLE simulated_transactions ADD COLUMN isRecurrent INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE simulated_transactions ADD COLUMN recurrenceType TEXT');
+      await db.execute('ALTER TABLE simulated_transactions ADD COLUMN recurrenceEndDate TEXT');
+      await db.execute('ALTER TABLE simulated_transactions ADD COLUMN lastAppliedDate TEXT');
     }
   }
 
@@ -300,7 +310,7 @@ class DatabaseService {
           : currentWallet - transaction.amount;
       await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [transaction.profileId]);
 
-      final id = await txn.insert('transactions', transaction.toMap());
+      //final id = await txn.insert('transactions', transaction.toMap());
       return transaction;
     });
   }
@@ -584,17 +594,15 @@ class DatabaseService {
   }
 
   /// Reads all transactions for a specific simulation.
-  /// Note: This reuses the main Transaction model.
   Future<List<Transaction>> readSimulatedTransactions(int simId) async {
     final db = await instance.database;
-    final result = await db.query(
-      'simulated_transactions',
-      where: 'simulationId = ?',
-      whereArgs: [simId],
-      orderBy: 'timestamp DESC',
-    );
-    // The map is compatible, but we need to join with categories for the name
-    // For simplicity now, we read directly. A full implementation would JOIN.
+    final result = await db.rawQuery('''
+      SELECT st.*, c.name as categoryName 
+      FROM simulated_transactions st
+      LEFT JOIN categories c ON st.categoryId = c.id
+      WHERE st.simulationId = ? 
+      ORDER BY st.timestamp DESC
+    ''', [simId]);
     return result.map((json) => Transaction.fromMap(json)).toList();
   }
 
@@ -605,17 +613,9 @@ class DatabaseService {
 
     await db.transaction((txn) async {
       for (final txMap in realTransactions) {
-        // Create a new map for the simulated transaction table
         final simTxMap = Map<String, dynamic>.from(txMap);
-        simTxMap.remove('id'); // Remove original transaction ID
-        simTxMap['simulationId'] = simId; // Add the simulation ID
-
-        // Remove recurrence fields as they are not in the simulated table
-        simTxMap.remove('isRecurrent');
-        simTxMap.remove('recurrenceType');
-        simTxMap.remove('recurrenceEndDate');
-        simTxMap.remove('lastAppliedDate');
-
+        simTxMap.remove('id');
+        simTxMap['simulationId'] = simId;
         await txn.insert('simulated_transactions', simTxMap);
       }
     });
@@ -627,28 +627,13 @@ class DatabaseService {
     final map = tx.toMap();
     map.remove('id');
     map['simulationId'] = simId;
-
-    // Remove fields not present in simulated_transactions table
-    map.remove('isRecurrent');
-    map.remove('recurrenceType');
-    map.remove('recurrenceEndDate');
-    map.remove('lastAppliedDate');
-
     final id = await db.insert('simulated_transactions', map);
-    // Re-create the object with the new ID for state management
-    return Transaction.fromMap((await db.query('simulated_transactions', where: 'id = ?', whereArgs: [id])).first);
+    return Transaction.fromMap((await db.rawQuery('SELECT st.*, c.name as categoryName FROM simulated_transactions st LEFT JOIN categories c ON st.categoryId = c.id WHERE st.id = ?', [id])).first);
   }
 
   Future<int> updateSimulatedTransaction(Transaction tx) async {
     final db = await instance.database;
-    final map = tx.toMap();
-    // Remove fields that are not present in the simulated_transactions table
-    // before attempting the update operation.
-    map.remove('isRecurrent');
-    map.remove('recurrenceType');
-    map.remove('recurrenceEndDate');
-    map.remove('lastAppliedDate');
-    return db.update('simulated_transactions', map, where: 'id = ?', whereArgs: [tx.id]);
+    return db.update('simulated_transactions', tx.toMap(), where: 'id = ?', whereArgs: [tx.id]);
   }
 
   Future<int> deleteSimulatedTransaction(int txId) async {

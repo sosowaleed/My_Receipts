@@ -234,18 +234,23 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
                                 },
                               ),
                               onTap: () async {
-                                Navigator.pop(ctx); // Close sheet
+                                Navigator.pop(ctx);
                                 final txs = await dbService.readSimulatedTransactions(sim.id);
                                 simProvider.startSimulation(sim, txs);
-
-                                // Navigate and then stop the simulation when the user returns.
-                                Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => ComparisonDashboardScreen(simulationToCompare: sim)
-                                )).then((_) {
-                                  // This code runs when the ComparisonDashboardScreen is popped.
-                                  simProvider.stopSimulation();
-                                });
+                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimulationWorkspaceScreen()));
                               },
+                              leading: IconButton(
+                                icon: const Icon(Icons.analytics_outlined),
+                                tooltip: "Compare",
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  final txs = await dbService.readSimulatedTransactions(sim.id);
+                                  simProvider.startSimulation(sim, txs);
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                      builder: (_) => ComparisonDashboardScreen(simulationToCompare: sim)
+                                  )).then((_) => simProvider.stopSimulation());
+                                },
+                              ),
                             );
                           },
                         ),

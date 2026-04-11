@@ -87,5 +87,6 @@
   "confirmDeleteSimulatedTransaction": "هل أنت متأكد من حذف هذه المعاملة المحاكاة؟",
   "addSimulatedIncome": "إضافة دخل محاكاة",
   "addSimulatedExpense": "إضافة مصروف محاكاة",
-  "originalVsSimulation": "{original} مقابل {simulation}"
+  "originalVsSimulation": "{original} مقابل {simulation}",
+  "projectionPeriod": "فترة التوقع"
 }
