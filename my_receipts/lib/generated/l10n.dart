@@ -799,6 +799,46 @@ class S {
       args: [],
     );
   }
+
+  /// `Import Simulation`
+  String get importSimulation {
+    return Intl.message(
+      'Import Simulation',
+      name: 'importSimulation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Export Simulation`
+  String get exportSimulation {
+    return Intl.message(
+      'Export Simulation',
+      name: 'exportSimulation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Select Simulation to Export`
+  String get selectSimulationToExport {
+    return Intl.message(
+      'Select Simulation to Export',
+      name: 'selectSimulationToExport',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No transactions yet.`
+  String get noTransactions {
+    return Intl.message(
+      'No transactions yet.',
+      name: 'noTransactions',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

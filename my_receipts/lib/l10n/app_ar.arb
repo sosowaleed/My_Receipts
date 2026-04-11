@@ -88,5 +88,9 @@
   "addSimulatedIncome": "إضافة دخل محاكاة",
   "addSimulatedExpense": "إضافة مصروف محاكاة",
   "originalVsSimulation": "{original} مقابل {simulation}",
-  "projectionPeriod": "فترة التوقع"
+  "projectionPeriod": "فترة التوقع",
+  "importSimulation": "استيراد محاكاة",
+  "exportSimulation": "تصدير محاكاة",
+  "selectSimulationToExport": "اختر محاكاة للتصدير",
+  "noTransactions": "لم يتم إجراء أي معاملات حتى الآن."
 }

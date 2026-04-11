@@ -124,7 +124,7 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
       body: Consumer<ProfileProvider>(
         builder: (context, provider, child) {
           if (provider.transactions.isEmpty) {
-            return const Center(child: Text("No transactions yet."));
+            return Center(child: Text(l10n.noTransactions));
           }
 
           // Group transactions by Year based on the current calendar selection

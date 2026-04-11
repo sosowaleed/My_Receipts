@@ -7,6 +7,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/sim.dart';
 import '../providers/simulation_provider.dart';
 import '../services/database_service.dart';
+import '../utils/snackbar_helper.dart';
+import '../services/csv_service.dart';
 import 'comparison_dashboard_screen.dart';
 import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
 import 'package:my_receipts/widgets/charts/monthly_overview_barchart.dart';
@@ -157,6 +159,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
     final dbService = DatabaseService.instance;
     final l10n = AppLocalizations.of(context)!;
     final currentProfileId = profileProvider.currentProfile!.id!;
+    final csvService = CsvService();
 
     showModalBottomSheet(
       context: context,
@@ -256,6 +259,67 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
                         ),
                       );
                     },
+                  ),
+                  // --- NEW IMPORT/EXPORT SECTION ---
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.file_upload),
+                          label: Text(l10n.importSimulation),
+                          onPressed: () async {
+                            Navigator.pop(ctx); // Close sheet first
+                            final importedSim = await csvService.importSimulationFromCsv(currentProfileId);
+                            if (importedSim != null) {
+                              SnackbarHelper.show(context, "Simulation '${importedSim.name}' imported successfully.");
+                              // Optionally, you could automatically open the imported sim
+                            } else {
+                              SnackbarHelper.show(context, "Simulation import failed.", isError: true);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.file_download),
+                          label: Text(l10n.exportSimulation),
+                          onPressed: () async {
+                            // First, ask which simulation to export
+                            final simulations = await dbService.readSimulations(currentProfileId);
+                            if (simulations.isEmpty) {
+                              Navigator.pop(ctx);
+                              SnackbarHelper.show(context, "No saved simulations to export.", isError: true);
+                              return;
+                            }
+
+                            final simToExport = await showDialog<Sim>(
+                              context: context,
+                              builder: (dialogCtx) => SimpleDialog(
+                                title: Text(l10n.selectSimulationToExport),
+                                children: simulations.map((sim) => SimpleDialogOption(
+                                  onPressed: () => Navigator.pop(dialogCtx, sim),
+                                  child: Text(sim.name),
+                                )).toList(),
+                              ),
+                            );
+
+                            if (simToExport != null) {
+                              Navigator.pop(ctx); // Close main sheet
+                              final txs = await dbService.readSimulatedTransactions(simToExport.id);
+                              final path = await csvService.exportSimulationToCsv(
+                                simulation: simToExport,
+                                transactions: txs,
+                              );
+                              if (path != null) {
+                                SnackbarHelper.show(context, "Simulation exported to $path");
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

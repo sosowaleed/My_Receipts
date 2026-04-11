@@ -102,6 +102,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "expenses": MessageLookupByLibrary.simpleMessage("Expenses"),
     "exportAction": MessageLookupByLibrary.simpleMessage("Export to CSV"),
+    "exportSimulation": MessageLookupByLibrary.simpleMessage(
+      "Export Simulation",
+    ),
     "exportSuccess": m3,
     "financialDashboard": MessageLookupByLibrary.simpleMessage(
       "Financial Dashboard",
@@ -125,6 +128,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "importFailedCheckFormat": MessageLookupByLibrary.simpleMessage(
       "Import Failed. Check file format and content.",
+    ),
+    "importSimulation": MessageLookupByLibrary.simpleMessage(
+      "Import Simulation",
     ),
     "importSuccess": MessageLookupByLibrary.simpleMessage(
       "Data imported successfully!",
@@ -153,6 +159,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "newSimulation": MessageLookupByLibrary.simpleMessage("New Simulation"),
     "noDataForPeriod": m4,
     "noEndDate": MessageLookupByLibrary.simpleMessage("No End Date"),
+    "noTransactions": MessageLookupByLibrary.simpleMessage(
+      "No transactions yet.",
+    ),
     "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "once": MessageLookupByLibrary.simpleMessage("Once"),
     "original": MessageLookupByLibrary.simpleMessage("Original"),
@@ -183,6 +192,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "selectImportFile": MessageLookupByLibrary.simpleMessage(
       "Select Import File",
+    ),
+    "selectSimulationToExport": MessageLookupByLibrary.simpleMessage(
+      "Select Simulation to Export",
     ),
     "simulate": MessageLookupByLibrary.simpleMessage("Simulate"),
     "simulation": MessageLookupByLibrary.simpleMessage("Simulation"),

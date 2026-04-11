@@ -88,5 +88,9 @@
   "addSimulatedIncome": "Add Simulated Income",
   "addSimulatedExpense": "Add Simulated Expense",
   "originalVsSimulation": "{original} vs. {simulation}",
-  "projectionPeriod": "Projection Period"
+  "projectionPeriod": "Projection Period",
+  "importSimulation": "Import Simulation",
+  "exportSimulation": "Export Simulation",
+  "selectSimulationToExport": "Select Simulation to Export",
+  "noTransactions": "No transactions yet."
 }
