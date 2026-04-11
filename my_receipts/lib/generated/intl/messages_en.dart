@@ -25,9 +25,14 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m1(profileName) =>
       "Are you sure you want to delete profile \'${profileName}\'? All its data will be lost forever.";
 
-  static String m2(path) => "Data exported successfully to ${path}";
+  static String m2(simName) =>
+      "Are you sure you want to delete the simulation \'${simName}\'?";
 
-  static String m3(dataType) => "No ${dataType} data for this period.";
+  static String m3(path) => "Data exported successfully to ${path}";
+
+  static String m4(dataType) => "No ${dataType} data for this period.";
+
+  static String m5(original, simulation) => "${original} vs. ${simulation}";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -36,6 +41,12 @@ class MessageLookup extends MessageLookupByLibrary {
       "Add New Category...",
     ),
     "addProfile": MessageLookupByLibrary.simpleMessage("Add Profile"),
+    "addSimulatedExpense": MessageLookupByLibrary.simpleMessage(
+      "Add Simulated Expense",
+    ),
+    "addSimulatedIncome": MessageLookupByLibrary.simpleMessage(
+      "Add Simulated Income",
+    ),
     "amount": MessageLookupByLibrary.simpleMessage("Amount"),
     "appName": MessageLookupByLibrary.simpleMessage("My Receipts"),
     "calendarPreference": MessageLookupByLibrary.simpleMessage(
@@ -45,24 +56,40 @@ class MessageLookup extends MessageLookupByLibrary {
     "category": MessageLookupByLibrary.simpleMessage("Category"),
     "categoryAdded": m0,
     "categoryName": MessageLookupByLibrary.simpleMessage("Category Name"),
+    "comparisonDashboard": MessageLookupByLibrary.simpleMessage(
+      "Comparison Dashboard",
+    ),
     "confirmDeleteProfile": m1,
+    "confirmDeleteSimulatedTransaction": MessageLookupByLibrary.simpleMessage(
+      "Are you sure you want to delete this simulated transaction?",
+    ),
+    "confirmDeleteSimulation": m2,
     "confirmDeleteTransaction": MessageLookupByLibrary.simpleMessage(
       "Are you sure you want to delete this transaction?",
     ),
     "daily": MessageLookupByLibrary.simpleMessage("Daily"),
     "delete": MessageLookupByLibrary.simpleMessage("Delete"),
     "deleteProfile": MessageLookupByLibrary.simpleMessage("Delete Profile"),
+    "deleteSimulatedTransaction": MessageLookupByLibrary.simpleMessage(
+      "Delete Simulated Transaction",
+    ),
     "description": MessageLookupByLibrary.simpleMessage("Description"),
     "earningsBreakdown": MessageLookupByLibrary.simpleMessage(
       "Earnings Breakdown (Last 30 Days)",
     ),
     "edit": MessageLookupByLibrary.simpleMessage("Edit"),
+    "editSimulatedTransaction": MessageLookupByLibrary.simpleMessage(
+      "Edit Simulated Transaction",
+    ),
     "editTransaction": MessageLookupByLibrary.simpleMessage("Edit Transaction"),
     "endDateOptional": MessageLookupByLibrary.simpleMessage(
       "End Date (Optional)",
     ),
     "enterCategoryName": MessageLookupByLibrary.simpleMessage(
       "Enter Category Name",
+    ),
+    "enterSimulationName": MessageLookupByLibrary.simpleMessage(
+      "Enter Simulation Name",
     ),
     "errorFieldRequired": MessageLookupByLibrary.simpleMessage(
       "This field is required.",
@@ -75,7 +102,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "expenses": MessageLookupByLibrary.simpleMessage("Expenses"),
     "exportAction": MessageLookupByLibrary.simpleMessage("Export to CSV"),
-    "exportSuccess": m2,
+    "exportSuccess": m3,
     "financialDashboard": MessageLookupByLibrary.simpleMessage(
       "Financial Dashboard",
     ),
@@ -110,16 +137,26 @@ class MessageLookup extends MessageLookupByLibrary {
     "last30DaysSummary": MessageLookupByLibrary.simpleMessage(
       "Last 30 Days Summary",
     ),
+    "loadSimulation": MessageLookupByLibrary.simpleMessage("Load Simulation"),
     "monthly": MessageLookupByLibrary.simpleMessage("Monthly"),
     "monthlyOverview": MessageLookupByLibrary.simpleMessage(
       "Monthly Overview (Last 6 Months)",
     ),
     "months": MessageLookupByLibrary.simpleMessage("months"),
     "netSavings": MessageLookupByLibrary.simpleMessage("Net Savings"),
-    "noDataForPeriod": m3,
+    "newFromBlank": MessageLookupByLibrary.simpleMessage(
+      "Start with a Blank Slate",
+    ),
+    "newFromHistory": MessageLookupByLibrary.simpleMessage(
+      "Copy Current History",
+    ),
+    "newSimulation": MessageLookupByLibrary.simpleMessage("New Simulation"),
+    "noDataForPeriod": m4,
     "noEndDate": MessageLookupByLibrary.simpleMessage("No End Date"),
     "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "once": MessageLookupByLibrary.simpleMessage("Once"),
+    "original": MessageLookupByLibrary.simpleMessage("Original"),
+    "originalVsSimulation": m5,
     "outgoingOverlayTitle": MessageLookupByLibrary.simpleMessage(
       "New Outgoing",
     ),
@@ -137,12 +174,19 @@ class MessageLookup extends MessageLookupByLibrary {
       "Recurrent Transaction",
     ),
     "save": MessageLookupByLibrary.simpleMessage("Save"),
+    "saveSimulation": MessageLookupByLibrary.simpleMessage("Save Simulation"),
     "selectExportLocation": MessageLookupByLibrary.simpleMessage(
       "Select Export Location",
     ),
     "selectImportFile": MessageLookupByLibrary.simpleMessage(
       "Select Import File",
     ),
+    "simulate": MessageLookupByLibrary.simpleMessage("Simulate"),
+    "simulation": MessageLookupByLibrary.simpleMessage("Simulation"),
+    "simulationWorkspace": MessageLookupByLibrary.simpleMessage(
+      "Simulation Workspace",
+    ),
+    "simulations": MessageLookupByLibrary.simpleMessage("Simulations"),
     "switchCalendar": MessageLookupByLibrary.simpleMessage("Switch Calendar"),
     "transactionDeleted": MessageLookupByLibrary.simpleMessage(
       "Transaction deleted!",

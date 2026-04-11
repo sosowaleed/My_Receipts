@@ -7,6 +7,8 @@ import 'package:my_receipts/providers/profile_provider.dart';
 import 'package:my_receipts/utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/simulation_provider.dart';
+
 // A simple class to hold controllers for one draft transaction
 class _DraftTransaction {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -19,7 +21,9 @@ class _DraftTransaction {
 class TransactionOverlay extends StatefulWidget {
   final TransactionType type;
   final Transaction? existingTransaction; // Used for editing
-  const TransactionOverlay({super.key, required this.type, this.existingTransaction});
+  final bool isSimulation;
+
+  const TransactionOverlay({super.key, required this.type, this.existingTransaction, this.isSimulation = false});
 
   @override
   State<TransactionOverlay> createState() => _TransactionOverlayState();
@@ -60,6 +64,7 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
 
   Future<void> _saveTransactions() async {
     final provider = Provider.of<ProfileProvider>(context, listen: false);
+    final simProvider = Provider.of<SimulationProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
     bool allValid = true;
 
@@ -91,7 +96,11 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
             ? widget.existingTransaction!.lastAppliedDate
             : (_isRecurrent ? DateTime.now() : null),
       );
-      await provider.updateTransaction(updatedTx, widget.existingTransaction!);
+      if (widget.isSimulation) {
+        await simProvider.updateSimulatedTransaction(updatedTx);
+      } else {
+        await provider.updateTransaction(updatedTx, widget.existingTransaction!);
+      }
       if (mounted) SnackbarHelper.show(context, l10n.transactionUpdated);
     } else {
       // Handle adding new transactions
@@ -113,7 +122,14 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
               : (_isRecurrent ? DateTime.now() : null),
         ));
       }
-      await provider.addBatchTransactions(newTransactions);
+      if (widget.isSimulation) {
+        for (var tx in newTransactions) {
+          await simProvider.addSimulatedTransaction(tx);
+        }
+      } else {
+        await provider.addBatchTransactions(newTransactions);
+      }
+
       if (mounted) SnackbarHelper.show(context, l10n.transactionSaved);
     }
 

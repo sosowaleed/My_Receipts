@@ -5,6 +5,7 @@ import 'package:my_receipts/screens/home_screen.dart';
 import 'package:my_receipts/screens/prompt_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:my_receipts/providers/simulation_provider.dart';
 
 void main() {
   // Ensure all plugins are initialized before running the app
@@ -17,8 +18,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ProfileProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ProfileProvider()),
+        ChangeNotifierProvider(create: (context) => SimulationProvider()),
+      ],
       child: Consumer<ProfileProvider>(
         builder: (context, provider, child) {
           return MaterialApp(

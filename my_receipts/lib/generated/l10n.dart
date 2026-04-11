@@ -619,6 +619,176 @@ class S {
       args: [],
     );
   }
+
+  /// `Simulate`
+  String get simulate {
+    return Intl.message('Simulate', name: 'simulate', desc: '', args: []);
+  }
+
+  /// `Simulations`
+  String get simulations {
+    return Intl.message('Simulations', name: 'simulations', desc: '', args: []);
+  }
+
+  /// `Simulation Workspace`
+  String get simulationWorkspace {
+    return Intl.message(
+      'Simulation Workspace',
+      name: 'simulationWorkspace',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Comparison Dashboard`
+  String get comparisonDashboard {
+    return Intl.message(
+      'Comparison Dashboard',
+      name: 'comparisonDashboard',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `New Simulation`
+  String get newSimulation {
+    return Intl.message(
+      'New Simulation',
+      name: 'newSimulation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Start with a Blank Slate`
+  String get newFromBlank {
+    return Intl.message(
+      'Start with a Blank Slate',
+      name: 'newFromBlank',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Copy Current History`
+  String get newFromHistory {
+    return Intl.message(
+      'Copy Current History',
+      name: 'newFromHistory',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Load Simulation`
+  String get loadSimulation {
+    return Intl.message(
+      'Load Simulation',
+      name: 'loadSimulation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Save Simulation`
+  String get saveSimulation {
+    return Intl.message(
+      'Save Simulation',
+      name: 'saveSimulation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enter Simulation Name`
+  String get enterSimulationName {
+    return Intl.message(
+      'Enter Simulation Name',
+      name: 'enterSimulationName',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Are you sure you want to delete the simulation '{simName}'?`
+  String confirmDeleteSimulation(Object simName) {
+    return Intl.message(
+      'Are you sure you want to delete the simulation \'$simName\'?',
+      name: 'confirmDeleteSimulation',
+      desc: '',
+      args: [simName],
+    );
+  }
+
+  /// `Original`
+  String get original {
+    return Intl.message('Original', name: 'original', desc: '', args: []);
+  }
+
+  /// `Simulation`
+  String get simulation {
+    return Intl.message('Simulation', name: 'simulation', desc: '', args: []);
+  }
+
+  /// `Edit Simulated Transaction`
+  String get editSimulatedTransaction {
+    return Intl.message(
+      'Edit Simulated Transaction',
+      name: 'editSimulatedTransaction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Delete Simulated Transaction`
+  String get deleteSimulatedTransaction {
+    return Intl.message(
+      'Delete Simulated Transaction',
+      name: 'deleteSimulatedTransaction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Are you sure you want to delete this simulated transaction?`
+  String get confirmDeleteSimulatedTransaction {
+    return Intl.message(
+      'Are you sure you want to delete this simulated transaction?',
+      name: 'confirmDeleteSimulatedTransaction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add Simulated Income`
+  String get addSimulatedIncome {
+    return Intl.message(
+      'Add Simulated Income',
+      name: 'addSimulatedIncome',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add Simulated Expense`
+  String get addSimulatedExpense {
+    return Intl.message(
+      'Add Simulated Expense',
+      name: 'addSimulatedExpense',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{original} vs. {simulation}`
+  String originalVsSimulation(Object original, Object simulation) {
+    return Intl.message(
+      '$original vs. $simulation',
+      name: 'originalVsSimulation',
+      desc: '',
+      args: [original, simulation],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

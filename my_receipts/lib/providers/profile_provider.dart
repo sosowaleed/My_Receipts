@@ -219,6 +219,8 @@ class ProfileProvider with ChangeNotifier {
     return grouped.map((key, value) => MapEntry(key, value.fold(0.0, (sum, tx) => sum + tx.amount)));
   }
 
+
+
   /// Gets monthly income/expense totals for the bar chart.
   /// Returns a map where key is month (YYYY-MM) and value is another map {'income': X, 'expenses': Y}
   Map<String, Map<String, double>> getMonthlyTotals(int monthsToGoBack) {

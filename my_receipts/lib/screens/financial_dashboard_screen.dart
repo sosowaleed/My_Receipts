@@ -1,10 +1,16 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:my_receipts/providers/profile_provider.dart';
+import 'package:my_receipts/screens/simulation_workspace_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:my_receipts/services/projection_service.dart';
+import '../models/sim.dart';
+import '../providers/simulation_provider.dart';
+import '../services/database_service.dart';
+import 'comparison_dashboard_screen.dart';
+import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
+import 'package:my_receipts/widgets/charts/monthly_overview_barchart.dart';
+import 'package:my_receipts/widgets/charts/projection_linechart.dart';
 
 class FinancialDashboardScreen extends StatefulWidget {
   const FinancialDashboardScreen({super.key});
@@ -68,7 +74,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 250,
-              child: _buildBarChart(context, provider.getMonthlyTotals(6)),
+              child: MonthlyOverviewBarChart(monthlyTotals: provider.getMonthlyTotals(6)),
             ),
             const Divider(height: 32),
 
@@ -77,25 +83,31 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 250,
-              child: _buildPieChart(context, provider.getExpenseByCategory(last30DaysStart, now), _pieChartColors),
+              child: CategoryBreakdownPieChart(
+                categoryData: provider.getExpenseByCategory(last30DaysStart, now),
+                colors: _pieChartColors,
+                noDataText: l10n.noDataForPeriod(l10n.expenses),
+              ),
             ),
-            _buildPieChartLegend(context, provider.getExpenseByCategory(last30DaysStart, now), _pieChartColors),
+            PieChartLegend(
+              categoryData: provider.getExpenseByCategory(last30DaysStart, now),
+              colors: _pieChartColors,
+            ),
             const Divider(height: 32),
             // --- 4. EARNINGS BREAKDOWN PIE CHART ---
             Text(l10n.earningsBreakdown, style: Theme.of(context).textTheme.titleLarge), // Add to localization files
             const SizedBox(height: 16),
             SizedBox(
               height: 250,
-              child: _buildPieChart(
-                context,
-                provider.getIncomeByCategory(last30DaysStart, now),
-                _incomePieChartColors, // Pass the new income colors
+              child: CategoryBreakdownPieChart(
+                categoryData: provider.getIncomeByCategory(last30DaysStart, now),
+                colors: _incomePieChartColors,
+                noDataText: l10n.noDataForPeriod(l10n.income),
               ),
             ),
-            _buildPieChartLegend(
-              context,
-              provider.getIncomeByCategory(last30DaysStart, now),
-              _incomePieChartColors, // Pass the new income colors
+            PieChartLegend(
+              categoryData: provider.getIncomeByCategory(last30DaysStart, now),
+              colors: _incomePieChartColors,
             ),
             const Divider(height: 32),
 
@@ -104,7 +116,12 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 300,
-              child: _buildProjectionChart(context, provider),
+              child: ProjectionLineChart(
+                currentBalance: provider.currentProfile?.walletAmount ?? 0.0,
+                historicalTransactions: provider.transactions,
+                activeRecurrentTransactions: provider.activeRecurrentTransactions,
+                monthsToProject: _projectionMonths.round(),
+              ),
             ),
             Slider(
               value: _projectionMonths,
@@ -121,185 +138,126 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.science_outlined),
+            label: Text(l10n.simulate),
+            onPressed: () => _showSimulateOptions(context),
+          ),
+        ),
+      ),
     );
   }
 
-  // --- CHART BUILDER METHODS ---
-
-  Widget _buildBarChart(BuildContext context, Map<String, Map<String, double>> monthlyTotals) {
+  void _showSimulateOptions(BuildContext context) {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final simProvider = Provider.of<SimulationProvider>(context, listen: false);
+    final dbService = DatabaseService.instance;
     final l10n = AppLocalizations.of(context)!;
-    if (monthlyTotals.values.every((e) => e['income'] == 0 && e['expenses'] == 0)) {
-      return Center(child: Text(l10n.noDataForPeriod('monthly')));
-    }
+    final currentProfileId = profileProvider.currentProfile!.id!;
 
-    final barGroups = <BarChartGroupData>[];
-    final keys = monthlyTotals.keys.toList();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Allow it to be taller
+      builder: (ctx) {
+        return StatefulBuilder( // Use StatefulBuilder for local state management
+          builder: (modalContext, setState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l10n.newSimulation, style: Theme.of(ctx).textTheme.headlineSmall),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.history_edu),
+                    label: Text(l10n.newFromHistory),
+                    onPressed: () async {
+                      Navigator.pop(ctx); // Close sheet
+                      final sim = await dbService.createSimulation(
+                          profileId: currentProfileId,
+                          name: "Copy of ${DateFormat.yMd().format(DateTime.now())}");
+                      await dbService.copyRealTransactionsToSimulation(sim.id, currentProfileId);
+                      final txs = await dbService.readSimulatedTransactions(sim.id);
+                      simProvider.startSimulation(sim, txs);
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimulationWorkspaceScreen()));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: Text(l10n.newFromBlank),
+                    onPressed: () async {
+                      Navigator.pop(ctx); // Close sheet
+                      final sim = await dbService.createSimulation(
+                          profileId: currentProfileId,
+                          name: "Blank Sim ${DateFormat.yMd().format(DateTime.now())}");
+                      simProvider.startSimulation(sim, []);
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimulationWorkspaceScreen()));
+                    },
+                  ),
+                  const Divider(height: 24),
+                  Text(l10n.simulations, style: Theme.of(ctx).textTheme.headlineSmall),
 
-    for (int i = 0; i < keys.length; i++) {
-      final monthKey = keys[i];
-      final totals = monthlyTotals[monthKey]!;
-      barGroups.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(toY: totals['income']!, color: Colors.green, width: 16, borderRadius: BorderRadius.zero),
-            BarChartRodData(toY: totals['expenses']!, color: Colors.red, width: 16, borderRadius: BorderRadius.zero),
-          ],
-        ),
-      );
-    }
+                  // Use a FutureBuilder to load and display saved simulations
+                  FutureBuilder<List<Sim>>(
+                    future: dbService.readSimulations(currentProfileId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Text("No saved simulations yet."),
+                        );
+                      }
+                      final sims = snapshot.data!;
+                      return Flexible( // Allow list to scroll if it's long
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: sims.length,
+                          itemBuilder: (context, index) {
+                            final sim = sims[index];
+                            return ListTile(
+                              title: Text(sim.name),
+                              subtitle: Text("Created: ${DateFormat.yMd().format(sim.createdAt)}"),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () async {
+                                  // Show confirmation dialog before deleting
+                                  await dbService.deleteSimulation(sim.id);
+                                  setState(() {}); // Rebuild the modal to refresh the list
+                                },
+                              ),
+                              onTap: () async {
+                                Navigator.pop(ctx); // Close sheet
+                                final txs = await dbService.readSimulatedTransactions(sim.id);
+                                simProvider.startSimulation(sim, txs);
 
-    return BarChart(
-      BarChartData(
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
-            final monthText = DateFormat('MMM', AppLocalizations.of(context)!.localeName).format(DateFormat('yyyy-MM').parse(keys[value.toInt()]));
-            return SideTitleWidget(axisSide: meta.axisSide, child: Text(monthText));
-          })),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: const FlGridData(show: true),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final currencyFormat = NumberFormat.currency(locale: Provider.of<ProfileProvider>(context, listen: false).appLocale.toString(), symbol: '');
-              return BarTooltipItem(
-                '${rodIndex == 0 ? "Income" : "Expense"}\n',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                children: <TextSpan>[
-                  TextSpan(
-                    text: currencyFormat.format(rod.toY),
-                    style: TextStyle(color: rod.color),
+                                // Navigate and then stop the simulation when the user returns.
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => ComparisonDashboardScreen(simulationToCompare: sim)
+                                )).then((_) {
+                                  // This code runs when the ComparisonDashboardScreen is popped.
+                                  simProvider.stopSimulation();
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPieChart(BuildContext context, Map<String, double> data, List<Color> colors) {
-    final l10n = AppLocalizations.of(context)!;
-    if (data.isEmpty) {
-      return Center(child: Text(l10n.noDataForPeriod('chart')));
-    }
-    final totalValue = data.values.fold(0.0, (sum, item) => sum + item);
-    if (totalValue == 0) {
-      return Center(child: Text(l10n.noDataForPeriod('chart')));
-    }
-
-    final List<PieChartSectionData> sections = [];
-    int colorIndex = 0;
-
-    data.forEach((category, amount) {
-      final percentage = (amount / totalValue) * 100;
-      sections.add(
-        PieChartSectionData(
-          color: colors[colorIndex % colors.length],
-          value: amount,
-          title: '${percentage.toStringAsFixed(0)}%',
-          radius: 80,
-          titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Colors.black, blurRadius: 2)]),
-        ),
-      );
-      colorIndex++;
-    });
-
-    return PieChart(
-      PieChartData(
-        sections: sections,
-        centerSpaceRadius: 40,
-        sectionsSpace: 2,
-      ),
-    );
-  }
-
-  Widget _buildPieChartLegend(BuildContext context, Map<String, double> data, List<Color> colors) {
-    if (data.isEmpty) return const SizedBox.shrink();
-
-    int colorIndex = 0;
-    final l10n = AppLocalizations.of(context)!;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 16.0),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: data.keys.map((category) {
-          final widget = Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 16, height: 16, color: colors[colorIndex % colors.length]),
-              const SizedBox(width: 4),
-              Text(category == 'Uncategorized' ? l10n.uncategorized : category),
-            ],
-          );
-          colorIndex++;
-          return widget;
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildProjectionChart(BuildContext context, ProfileProvider provider) {
-    final l10n = AppLocalizations.of(context)!;
-
-    // --- Use the new ProjectionService ---
-    final projectionService = ProjectionService();
-    final List<FlSpot> spots = projectionService.generateProjection(
-      currentBalance: provider.currentProfile?.walletAmount ?? 0.0,
-      historicalTransactions: provider.transactions,
-      activeRecurrentTransactions: provider.activeRecurrentTransactions,
-      monthsToProject: _projectionMonths.round(),
-    );
-
-    if (spots.length < 2) {
-      return Center(child: Text(l10n.noDataForPeriod('projection')));
-    }
-
-    return LineChart(
-      LineChartData(
-        gridData: const FlGridData(show: true),
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() % 6 == 0) { // Show label every 6 months
-                  return SideTitleWidget(
-                      axisSide: meta.axisSide, child: Text("${value.toInt()}m"));
-                }
-                return const SizedBox.shrink();
-              },
-              reservedSize: 30,
-            ),
-          ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 60)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: true),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            color: Theme.of(context).colorScheme.primary,
-            barWidth: 4,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-            ),
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
