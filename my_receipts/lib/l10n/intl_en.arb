@@ -92,5 +92,10 @@
   "importSimulation": "Import Simulation",
   "exportSimulation": "Export Simulation",
   "selectSimulationToExport": "Select Simulation to Export",
-  "noTransactions": "No transactions yet."
+  "noTransactions": "No transactions yet.",
+  "day": "Day",
+  "week": "Week",
+  "year": "Year",
+  "transactionsInThisPeriod": "Transactions in this period",
+  "noTransactionsInThisPeriod": "No transactions occurred in this period."
 }

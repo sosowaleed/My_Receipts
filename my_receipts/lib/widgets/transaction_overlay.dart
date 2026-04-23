@@ -296,7 +296,10 @@ class _TransactionOverlayState extends State<TransactionOverlay> {
               SwitchListTile(
                 title: Text(l10n.recurrentTransaction),
                 value: _isRecurrent,
-                onChanged: (value) {
+                // If we are editing an existing transaction, disable the switch.
+                // Changing a transaction from non-recurrent to recurrent or vice-versa
+                // can have complex side effects. It's better to delete and recreate.
+                onChanged: _isEditing ? null : (value) {
                   setState(() {
                     _isRecurrent = value;
                   });

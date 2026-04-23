@@ -92,5 +92,10 @@
   "importSimulation": "استيراد محاكاة",
   "exportSimulation": "تصدير محاكاة",
   "selectSimulationToExport": "اختر محاكاة للتصدير",
-  "noTransactions": "لم يتم إجراء أي معاملات حتى الآن."
+  "noTransactions": "لم يتم إجراء أي معاملات حتى الآن.",
+  "day": "يوم",
+  "week": "أسبوع",
+  "year": "سنة",
+  "transactionsInThisPeriod": "المعاملات في هذه الفترة",
+  "noTransactionsInThisPeriod": "لم تحدث أي معاملات في هذه الفترة."
 }

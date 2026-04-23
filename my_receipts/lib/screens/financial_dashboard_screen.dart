@@ -5,14 +5,16 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/sim.dart';
+import '../models/transaction.dart';
 import '../providers/simulation_provider.dart';
 import '../services/database_service.dart';
+import '../services/projection_service.dart';
 import '../utils/snackbar_helper.dart';
 import '../services/csv_service.dart';
 import 'comparison_dashboard_screen.dart';
 import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
 import 'package:my_receipts/widgets/charts/monthly_overview_barchart.dart';
-import 'package:my_receipts/widgets/charts/projection_linechart.dart';
+import '../widgets/Charts/projection_linechart.dart';
 
 class FinancialDashboardScreen extends StatefulWidget {
   const FinancialDashboardScreen({super.key});
@@ -23,7 +25,8 @@ class FinancialDashboardScreen extends StatefulWidget {
 
 class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
   // State for the projection
-  double _projectionMonths = 12; // Default projection for 1 year
+  ProjectionPeriod _selectedPeriod = ProjectionPeriod.month;
+
   // Define colors for the pie chart to be used by the chart and the legend
   //Expense colors
   final List<Color> _pieChartColors = [
@@ -116,16 +119,42 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             // --- 5. FINANCIAL PROJECTION ---
             Text(l10n.financialProjection, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
+            // --- SegmentedButton for period selection ---
+            SegmentedButton<ProjectionPeriod>(
+              segments: <ButtonSegment<ProjectionPeriod>>[
+                ButtonSegment(value: ProjectionPeriod.day, label: Text(l10n.day)),
+                ButtonSegment(value: ProjectionPeriod.week, label: Text(l10n.week)),
+                ButtonSegment(value: ProjectionPeriod.month, label: Text(l10n.months)),
+                ButtonSegment(value: ProjectionPeriod.year, label: Text(l10n.year)),
+              ],
+              selected: {_selectedPeriod},
+              onSelectionChanged: (Set<ProjectionPeriod> newSelection) {
+                setState(() {
+                  _selectedPeriod = newSelection.first;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
             SizedBox(
-              height: 300,
-              child: ProjectionLineChart(
-                currentBalance: provider.currentProfile?.walletAmount ?? 0.0,
-                historicalTransactions: provider.transactions,
-                activeRecurrentTransactions: provider.activeRecurrentTransactions,
-                monthsToProject: _projectionMonths.round(),
+              height: 380,
+              child: Consumer<ProfileProvider>( // Use a consumer to get the latest balance
+                builder: (context, provider, child) {
+                  // Calculate the initial balance by working backwards
+                  double initialBalance = provider.currentProfile?.walletAmount ?? 0.0;
+                  for (final tx in provider.transactions) {
+                    initialBalance -= (tx.type == TransactionType.income ? tx.amount : -tx.amount);
+                  }
+
+                  return ProjectionLineChart(
+                    initialBalance: initialBalance, // Pass the calculated initial balance
+                    historicalTransactions: provider.transactions,
+                    activeRecurrentTransactions: provider.activeRecurrentTransactions,
+                    period: _selectedPeriod,
+                  );
+                },
               ),
             ),
-            Slider(
+            /*Slider(
               value: _projectionMonths,
               min: 1,
               max: 60,
@@ -136,7 +165,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
                   _projectionMonths = value;
                 });
               },
-            ),
+            ),*/
           ],
         ),
       ),
@@ -240,18 +269,18 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
                                 Navigator.pop(ctx);
                                 final txs = await dbService.readSimulatedTransactions(sim.id);
                                 simProvider.startSimulation(sim, txs);
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimulationWorkspaceScreen()));
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => ComparisonDashboardScreen(simulationToCompare: sim)
+                                )).then((_) => simProvider.stopSimulation());
                               },
                               leading: IconButton(
-                                icon: const Icon(Icons.analytics_outlined),
-                                tooltip: "Compare",
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: "Edit Simulation",
                                 onPressed: () async {
                                   Navigator.pop(ctx);
                                   final txs = await dbService.readSimulatedTransactions(sim.id);
                                   simProvider.startSimulation(sim, txs);
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                      builder: (_) => ComparisonDashboardScreen(simulationToCompare: sim)
-                                  )).then((_) => simProvider.stopSimulation());
+                                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimulationWorkspaceScreen()));
                                 },
                               ),
                             );
@@ -260,7 +289,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
                       );
                     },
                   ),
-                  // --- NEW IMPORT/EXPORT SECTION ---
+                  // --- IMPORT/EXPORT SECTION ---
                   const Divider(height: 24),
                   Row(
                     children: [

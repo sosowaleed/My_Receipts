@@ -839,6 +839,41 @@ class S {
       args: [],
     );
   }
+
+  /// `Day`
+  String get day {
+    return Intl.message('Day', name: 'day', desc: '', args: []);
+  }
+
+  /// `Week`
+  String get week {
+    return Intl.message('Week', name: 'week', desc: '', args: []);
+  }
+
+  /// `Year`
+  String get year {
+    return Intl.message('Year', name: 'year', desc: '', args: []);
+  }
+
+  /// `Transactions in this period`
+  String get transactionsInThisPeriod {
+    return Intl.message(
+      'Transactions in this period',
+      name: 'transactionsInThisPeriod',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No transactions occurred in this period.`
+  String get noTransactionsInThisPeriod {
+    return Intl.message(
+      'No transactions occurred in this period.',
+      name: 'noTransactionsInThisPeriod',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

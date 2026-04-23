@@ -68,6 +68,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Are you sure you want to delete this transaction?",
     ),
     "daily": MessageLookupByLibrary.simpleMessage("Daily"),
+    "day": MessageLookupByLibrary.simpleMessage("Day"),
     "delete": MessageLookupByLibrary.simpleMessage("Delete"),
     "deleteProfile": MessageLookupByLibrary.simpleMessage("Delete Profile"),
     "deleteSimulatedTransaction": MessageLookupByLibrary.simpleMessage(
@@ -162,6 +163,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "noTransactions": MessageLookupByLibrary.simpleMessage(
       "No transactions yet.",
     ),
+    "noTransactionsInThisPeriod": MessageLookupByLibrary.simpleMessage(
+      "No transactions occurred in this period.",
+    ),
     "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "once": MessageLookupByLibrary.simpleMessage("Once"),
     "original": MessageLookupByLibrary.simpleMessage("Original"),
@@ -212,7 +216,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "transactionUpdated": MessageLookupByLibrary.simpleMessage(
       "Transaction updated!",
     ),
+    "transactionsInThisPeriod": MessageLookupByLibrary.simpleMessage(
+      "Transactions in this period",
+    ),
     "uncategorized": MessageLookupByLibrary.simpleMessage("Uncategorized"),
+    "week": MessageLookupByLibrary.simpleMessage("Week"),
     "weekly": MessageLookupByLibrary.simpleMessage("Weekly"),
+    "year": MessageLookupByLibrary.simpleMessage("Year"),
   };
 }

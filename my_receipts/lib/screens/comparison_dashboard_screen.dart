@@ -8,6 +8,7 @@ import 'package:my_receipts/services/chart_data_adapter.dart';
 import 'package:my_receipts/widgets/charts/monthly_overview_barchart.dart';
 import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
 import '../models/transaction.dart';
+import '../services/projection_service.dart';
 import '../widgets/Charts/projection_linechart.dart';
 
 class ComparisonDashboardScreen extends StatefulWidget {
@@ -19,7 +20,7 @@ class ComparisonDashboardScreen extends StatefulWidget {
 }
 
 class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
-  double _projectionMonths = 12.0;
+  ProjectionPeriod _selectedPeriod = ProjectionPeriod.month;
 
   // Chart Colors as constants or themed getters
   static const List<Color> _expenseColors = [
@@ -123,25 +124,36 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
                 // Move Slider here so it's above both charts and affects both
                 topControl: Column(
                   children: [
-                    Text("${l10n.projectionPeriod}: ${_projectionMonths.round()} ${l10n.months}"),
-                    Slider(
-                      value: _projectionMonths,
-                      min: 1, max: 60, divisions: 59,
-                      onChanged: (val) => setState(() => _projectionMonths = val),
+                    // --- NEW: SegmentedButton for period selection ---
+                    SegmentedButton<ProjectionPeriod>(
+                      segments: <ButtonSegment<ProjectionPeriod>>[
+                        ButtonSegment(value: ProjectionPeriod.day, label: Text(l10n.day)),
+                        ButtonSegment(value: ProjectionPeriod.week, label: Text(l10n.week)),
+                        ButtonSegment(value: ProjectionPeriod.month, label: Text(l10n.months)),
+                        ButtonSegment(value: ProjectionPeriod.year, label: Text(l10n.year)),
+                      ],
+                      selected: {_selectedPeriod},
+                      onSelectionChanged: (Set<ProjectionPeriod> newSelection) {
+                        setState(() {
+                          _selectedPeriod = newSelection.first;
+                        });
+                      },
                     ),
                   ],
                 ),
                 originalWidget: ProjectionLineChart(
-                  currentBalance: realFinalBalance,
+                  initialBalance: realFinalBalance,
                   historicalTransactions: profileProvider.transactions,
                   activeRecurrentTransactions: profileProvider.activeRecurrentTransactions,
-                  monthsToProject: _projectionMonths.toInt(),
+                  period: _selectedPeriod,
+                  isSimulation: false,
                 ),
                 simulatedWidget: ProjectionLineChart(
-                  currentBalance: simulatedCurrentBalance,
+                  initialBalance: simulatedCurrentBalance,
                   historicalTransactions: simProvider.simulatedTransactions,
                   activeRecurrentTransactions: simActiveRecurrentTxs,
-                  monthsToProject: _projectionMonths.toInt(),
+                  period: _selectedPeriod,
+                  isSimulation: true,
                 ),
               ),
             ],
