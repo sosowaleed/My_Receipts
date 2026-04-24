@@ -97,5 +97,8 @@
   "week": "Week",
   "year": "Year",
   "transactionsInThisPeriod": "Transactions in this period",
-  "noTransactionsInThisPeriod": "No transactions occurred in this period."
+  "noTransactionsInThisPeriod": "No transactions occurred in this period.",
+  "all": "All",
+  "timeline": "Timeline",
+  "goToToday": "Go to Today"
 }

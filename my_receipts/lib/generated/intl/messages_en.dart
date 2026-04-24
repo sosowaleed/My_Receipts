@@ -47,6 +47,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "addSimulatedIncome": MessageLookupByLibrary.simpleMessage(
       "Add Simulated Income",
     ),
+    "all": MessageLookupByLibrary.simpleMessage("All"),
     "amount": MessageLookupByLibrary.simpleMessage("Amount"),
     "appName": MessageLookupByLibrary.simpleMessage("My Receipts"),
     "calendarPreference": MessageLookupByLibrary.simpleMessage(
@@ -114,6 +115,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Financial Projection",
     ),
     "frequency": MessageLookupByLibrary.simpleMessage("Frequency"),
+    "goToToday": MessageLookupByLibrary.simpleMessage("Go to Today"),
     "gregorian": MessageLookupByLibrary.simpleMessage("Gregorian"),
     "hijri": MessageLookupByLibrary.simpleMessage("Hijri"),
     "homeImportExport": MessageLookupByLibrary.simpleMessage("Import/Export"),
@@ -207,6 +209,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "simulations": MessageLookupByLibrary.simpleMessage("Simulations"),
     "switchCalendar": MessageLookupByLibrary.simpleMessage("Switch Calendar"),
+    "timeline": MessageLookupByLibrary.simpleMessage("Timeline"),
     "transactionDeleted": MessageLookupByLibrary.simpleMessage(
       "Transaction deleted!",
     ),

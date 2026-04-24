@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:my_receipts/models/transaction.dart';
 
+import '../models/timeline_period.dart';
+
 // Enum for time period selection
 enum ProjectionPeriod { day, week, month, year }
 
@@ -18,22 +20,25 @@ class ProjectionData {
 }
 
 class ProjectionService {
-  List<FlSpot> generateProjection({
+  ProjectionData generateProjection({
     required double startingBalance,
     required double startingX, // The X-coordinate of the last historical point
     required List<Transaction> historicalTransactions,
     required List<Transaction> activeRecurrentTransactions,
-    required ProjectionPeriod period,
+    required TimelinePeriod period,
+    bool useTimestampX = false,
   }) {
     final now = DateTime.now();
     final List<FlSpot> spots = [FlSpot(startingX, startingBalance)];
+    final Map<int, DateTime> dateMap = {0: now};
+    final Map<int, List<Transaction>> transactionMap = {0: []};
 
     double runningBalance = startingBalance;
     DateTime periodStart = now;
 
-    int steps;
-    Duration stepDuration;
-    double avgNetPerStep;
+    int steps = 0;
+    Duration stepDuration = Duration.zero;
+    double avgNetPerStep = 0;
 
     // --- Step 1: Calculate historical average net change PER DAY ---
     final cutoffDate = now.subtract(const Duration(days: 90));
@@ -44,26 +49,32 @@ class ProjectionService {
 
     // --- Step 2: Configure loop based on selected period ---
     switch (period) {
-      case ProjectionPeriod.day:
+      case TimelinePeriod.day:
         steps = 30; // 30 days
         stepDuration = const Duration(days: 1);
         avgNetPerStep = avgNetPerDay;
         break;
-      case ProjectionPeriod.week:
+      case TimelinePeriod.week:
         steps = 12; // 12 weeks
         stepDuration = const Duration(days: 7);
         avgNetPerStep = avgNetPerDay * 7;
         break;
-      case ProjectionPeriod.month:
+      case TimelinePeriod.month:
         steps = 12; // 12 months
         // Duration is handled manually for months
         stepDuration = const Duration(days: 30); // Placeholder
         avgNetPerStep = avgNetPerDay * 30.4; // Average month length
         break;
-      case ProjectionPeriod.year:
+      case TimelinePeriod.year:
         steps = 5; // 5 years
         // Duration is handled manually for years
         stepDuration = const Duration(days: 365); // Placeholder
+        avgNetPerStep = avgNetPerDay * 365.25;
+        break;
+      case TimelinePeriod.all:
+        // For "All", we project the next 5 years similar to the year view
+        steps = 5;
+        stepDuration = const Duration(days: 365);
         avgNetPerStep = avgNetPerDay * 365.25;
         break;
     }
@@ -71,11 +82,12 @@ class ProjectionService {
     // --- Step 3: Simulate future steps ---
     for (int i = 1; i <= steps; i++) {
       double stepNetChange = avgNetPerStep;
+      List<Transaction> periodTransactions = [];
 
       DateTime periodEnd;
-      if (period == ProjectionPeriod.month) {
+      if (period == TimelinePeriod.month) {
         periodEnd = DateTime(now.year, now.month + i, now.day);
-      } else if (period == ProjectionPeriod.year) {
+      } else if (period == TimelinePeriod.year || period == TimelinePeriod.all) {
         periodEnd = DateTime(now.year + i, now.month, now.day);
       } else {
         periodEnd = now.add(stepDuration * i);
@@ -96,17 +108,17 @@ class ProjectionService {
             }
             break;
           case 'weekly':
-            if (period == ProjectionPeriod.week || period == ProjectionPeriod.month || period == ProjectionPeriod.year) {
+            if (period == TimelinePeriod.week || period == TimelinePeriod.month || period == TimelinePeriod.year || period == TimelinePeriod.all) {
               isApplicable = true;
             }
             break;
           case 'monthly':
-            if (period == ProjectionPeriod.month || period == ProjectionPeriod.year) {
+            if (period == TimelinePeriod.month || period == TimelinePeriod.year || period == TimelinePeriod.all) {
               isApplicable = true;
             }
             break;
           case 'yearly':
-            if (period == ProjectionPeriod.year) {
+            if (period == TimelinePeriod.year || period == TimelinePeriod.all) {
               isApplicable = true;
             }
             break;
@@ -114,18 +126,27 @@ class ProjectionService {
 
         if (isApplicable) {
           // For non-daily (discrete) items, we add the amount once per relevant step
-          // (e.g., one monthly bill added to a monthly step)
           if (rTx.recurrenceType != 'daily') {
             stepNetChange += (rTx.type == TransactionType.income ? rTx.amount : -rTx.amount);
           }
+          periodTransactions.add(rTx);
         }
       }
 
       runningBalance += stepNetChange;
-      spots.add(FlSpot(i.toDouble(), runningBalance));
+      double xValue = useTimestampX ? periodEnd.millisecondsSinceEpoch.toDouble() : startingX + i;
+      spots.add(FlSpot(xValue, runningBalance));
+      
+      dateMap[i] = periodEnd;
+      transactionMap[i] = periodTransactions;
+      
       periodStart = periodEnd;
     }
 
-    return spots;
+    return ProjectionData(
+      spots: spots,
+      dateMap: dateMap,
+      transactionMap: transactionMap,
+    );
   }
 }

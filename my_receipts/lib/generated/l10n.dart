@@ -874,6 +874,21 @@ class S {
       args: [],
     );
   }
+
+  /// `All`
+  String get all {
+    return Intl.message('All', name: 'all', desc: '', args: []);
+  }
+
+  /// `Timeline`
+  String get timeline {
+    return Intl.message('Timeline', name: 'timeline', desc: '', args: []);
+  }
+
+  /// `Go to Today`
+  String get goToToday {
+    return Intl.message('Go to Today', name: 'goToToday', desc: '', args: []);
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -97,5 +97,8 @@
   "week": "أسبوع",
   "year": "سنة",
   "transactionsInThisPeriod": "المعاملات في هذه الفترة",
-  "noTransactionsInThisPeriod": "لم تحدث أي معاملات في هذه الفترة."
+  "noTransactionsInThisPeriod": "لم تحدث أي معاملات في هذه الفترة.",
+  "all": "الكل",
+  "timeline": "الجدول الزمني",
+  "goToToday": "الانتقال إلى اليوم"
 }

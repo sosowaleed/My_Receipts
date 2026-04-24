@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:my_receipts/models/sim.dart';
 import 'package:my_receipts/providers/profile_provider.dart';
 import 'package:my_receipts/providers/simulation_provider.dart';
@@ -7,9 +8,9 @@ import 'package:provider/provider.dart';
 import 'package:my_receipts/services/chart_data_adapter.dart';
 import 'package:my_receipts/widgets/charts/monthly_overview_barchart.dart';
 import 'package:my_receipts/widgets/charts/category_breakdown_piechart.dart';
+import '../models/timeline_period.dart';
 import '../models/transaction.dart';
-import '../services/projection_service.dart';
-import '../widgets/Charts/projection_linechart.dart';
+import '../widgets/Charts/financial_timeline_chart.dart';
 
 class ComparisonDashboardScreen extends StatefulWidget {
   final Sim simulationToCompare;
@@ -20,7 +21,10 @@ class ComparisonDashboardScreen extends StatefulWidget {
 }
 
 class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
-  ProjectionPeriod _selectedPeriod = ProjectionPeriod.month;
+
+  // Projection State
+  TimelinePeriod _selectedPeriod = TimelinePeriod.year;
+  DateTime _viewingDate = DateTime.now();
 
   // Chart Colors as constants or themed getters
   static const List<Color> _expenseColors = [
@@ -33,30 +37,96 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
     Colors.cyan.shade600, Colors.lime.shade700
   ];
 
+  void _navigateTimeline(int amount) {
+    setState(() {
+      switch (_selectedPeriod) {
+        case TimelinePeriod.day:
+          _viewingDate = _viewingDate.add(Duration(days: amount));
+          break;
+        case TimelinePeriod.week:
+          _viewingDate = _viewingDate.add(Duration(days: 7 * amount));
+          break;
+        case TimelinePeriod.month:
+          _viewingDate = DateTime(_viewingDate.year, _viewingDate.month + amount, _viewingDate.day);
+          break;
+        case TimelinePeriod.year:
+          _viewingDate = DateTime(_viewingDate.year + amount, _viewingDate.month, _viewingDate.day);
+          break;
+        case TimelinePeriod.all:
+          break;
+      }
+    });
+  }
+
+  String _getFormattedDateTitle() {
+    final l10n = AppLocalizations.of(context)!;
+    switch (_selectedPeriod) {
+      case TimelinePeriod.day:
+        return DateFormat.yMMMMd(l10n.localeName).format(_viewingDate);
+      case TimelinePeriod.week:
+        final startOfWeek = _viewingDate.subtract(Duration(days: _viewingDate.weekday - 1));
+        final endOfWeek = startOfWeek.add(const Duration(days: 6));
+        return "${DateFormat.yMd(l10n.localeName).format(startOfWeek)} - ${DateFormat.yMd(l10n.localeName).format(endOfWeek)}";
+      case TimelinePeriod.month:
+        return DateFormat.yMMMM(l10n.localeName).format(_viewingDate);
+      case TimelinePeriod.year:
+        return DateFormat.y(l10n.localeName).format(_viewingDate);
+      case TimelinePeriod.all:
+        return l10n.all;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profileProvider = context.watch<ProfileProvider>();
     final simProvider = context.watch<SimulationProvider>();
 
-    // 1. Prepare Data Adapters
+    // Prepare Data Adapters (used for static charts)
     final originalAdapter = ChartDataAdapter(transactions: profileProvider.transactions);
     final simulatedAdapter = ChartDataAdapter(transactions: simProvider.simulatedTransactions);
 
-    // 2. Calculate Balances
-    final realFinalBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
+    // --- TIMELINE FILTERING LOGIC (Synchronized for both charts) ---
+    final DateTime start, end;
+    switch (_selectedPeriod) {
+      case TimelinePeriod.day:
+        start = DateTime(_viewingDate.year, _viewingDate.month, _viewingDate.day);
+        end = start.add(const Duration(days: 1));
+        break;
+      case TimelinePeriod.week:
+        final diff = _viewingDate.weekday - 1;
+        start = DateTime(_viewingDate.year, _viewingDate.month, _viewingDate.day).subtract(Duration(days: diff));
+        end = start.add(const Duration(days: 7));
+        break;
+      case TimelinePeriod.month:
+        start = DateTime(_viewingDate.year, _viewingDate.month, 1);
+        end = DateTime(_viewingDate.year, _viewingDate.month + 1, 1);
+        break;
+      case TimelinePeriod.year:
+        start = DateTime(_viewingDate.year, 1, 1);
+        end = DateTime(_viewingDate.year + 1, 1, 1);
+        break;
+      default: // all
+        start = DateTime(1900);
+        end = DateTime(2200);
+    }
 
-    // Efficiency: Calculate nets once per build
-    double calculateNet(List<Transaction> txs) => txs.fold(0.0, (sum, tx) =>
-    sum + (tx.type == TransactionType.income ? tx.amount : -tx.amount));
+    // Filter transactions for the timeline
+    final filteredOriginalTxs = profileProvider.transactions.where((tx) =>
+    !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end)).toList();
+    final filteredSimulatedTxs = simProvider.simulatedTransactions.where((tx) =>
+    !tx.timestamp.isBefore(start) && tx.timestamp.isBefore(end)).toList();
 
-    final realNet = calculateNet(originalAdapter.transactions);
-    final simNet = calculateNet(simulatedAdapter.transactions);
-    final simulatedCurrentBalance = realFinalBalance + (simNet - realNet);
+    // Calculate initial balances for the start of the current viewing window
+    double originalPeriodInitialBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
+    for (final tx in profileProvider.transactions.where((t) => t.timestamp.isAfter(start))) {
+      originalPeriodInitialBalance -= (tx.type == TransactionType.income ? tx.amount : -tx.amount);
+    }
 
-    final simActiveRecurrentTxs = simProvider.simulatedTransactions.where((tx) =>
-    tx.isRecurrent && (tx.recurrenceEndDate == null || tx.recurrenceEndDate!.isAfter(DateTime.now()))
-    ).toList();
+    double simulatedPeriodInitialBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
+    for (final tx in simProvider.simulatedTransactions.where((t) => t.timestamp.isAfter(start))) {
+      simulatedPeriodInitialBalance -= (tx.type == TransactionType.income ? tx.amount : -tx.amount);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -69,7 +139,7 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
           return ListView(
             padding: const EdgeInsets.all(8.0),
             children: [
-              // Monthly Overview
+              // Monthly Overview (Stays same)
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
@@ -78,7 +148,7 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
                 simulatedWidget: MonthlyOverviewBarChart(monthlyTotals: simulatedAdapter.getMonthlyTotals(6)),
               ),
 
-              // Expense Breakdown
+              // Expense Breakdown (Stays same)
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
@@ -97,7 +167,7 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
                 ),
               ),
 
-              // Earnings Breakdown
+              // Earnings Breakdown (Stays same)
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
@@ -116,43 +186,56 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
                 ),
               ),
 
-              // Financial Projection
+              // Financial Projection (This is what we are updating to match Dashboard)
               _buildComparisonCard(
                 context: context,
                 isWide: isWide,
                 title: l10n.financialProjection,
-                // Move Slider here so it's above both charts and affects both
                 topControl: Column(
                   children: [
-                    // --- NEW: SegmentedButton for period selection ---
-                    SegmentedButton<ProjectionPeriod>(
-                      segments: <ButtonSegment<ProjectionPeriod>>[
-                        ButtonSegment(value: ProjectionPeriod.day, label: Text(l10n.day)),
-                        ButtonSegment(value: ProjectionPeriod.week, label: Text(l10n.week)),
-                        ButtonSegment(value: ProjectionPeriod.month, label: Text(l10n.months)),
-                        ButtonSegment(value: ProjectionPeriod.year, label: Text(l10n.year)),
+                    // SegmentedButton for period selection
+                    SegmentedButton<TimelinePeriod>(
+                      segments: [
+                        ButtonSegment(value: TimelinePeriod.day, label: Text(l10n.day)),
+                        ButtonSegment(value: TimelinePeriod.week, label: Text(l10n.week)),
+                        ButtonSegment(value: TimelinePeriod.month, label: Text(l10n.months)),
+                        ButtonSegment(value: TimelinePeriod.year, label: Text(l10n.year)),
+                        ButtonSegment(value: TimelinePeriod.all, label: Text(l10n.all)),
                       ],
                       selected: {_selectedPeriod},
-                      onSelectionChanged: (Set<ProjectionPeriod> newSelection) {
+                      onSelectionChanged: (newSelection) {
                         setState(() {
                           _selectedPeriod = newSelection.first;
                         });
                       },
                     ),
+                    const SizedBox(height: 8),
+                    // Navigation Controls
+                    if (_selectedPeriod != TimelinePeriod.all)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _navigateTimeline(-1)),
+                          Text(_getFormattedDateTitle(), style: Theme.of(context).textTheme.titleMedium),
+                          IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _navigateTimeline(1)),
+                        ],
+                      ),
                   ],
                 ),
-                originalWidget: ProjectionLineChart(
-                  initialBalance: realFinalBalance,
-                  historicalTransactions: profileProvider.transactions,
+                originalWidget: FinancialTimelineChart(
+                  initialBalance: originalPeriodInitialBalance,
+                  transactions: filteredOriginalTxs,
                   activeRecurrentTransactions: profileProvider.activeRecurrentTransactions,
                   period: _selectedPeriod,
+                  viewingDate: _viewingDate,
                   isSimulation: false,
                 ),
-                simulatedWidget: ProjectionLineChart(
-                  initialBalance: simulatedCurrentBalance,
-                  historicalTransactions: simProvider.simulatedTransactions,
-                  activeRecurrentTransactions: simActiveRecurrentTxs,
+                simulatedWidget: FinancialTimelineChart(
+                  initialBalance: simulatedPeriodInitialBalance,
+                  transactions: filteredSimulatedTxs,
+                  activeRecurrentTransactions: const [], // Sim has its own recurrent txs inside its list
                   period: _selectedPeriod,
+                  viewingDate: _viewingDate,
                   isSimulation: true,
                 ),
               ),
@@ -179,7 +262,7 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
         children: [
           Text(label, style: textTheme.titleMedium),
           const SizedBox(height: 8),
-          SizedBox(height: 300, child: child),
+          SizedBox(height: 380, child: child), // Increased height to match Dashboard
         ],
       );
     }
