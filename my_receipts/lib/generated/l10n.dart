@@ -889,6 +889,16 @@ class S {
   String get goToToday {
     return Intl.message('Go to Today', name: 'goToToday', desc: '', args: []);
   }
+
+  /// `Select Calendar Type`
+  String get selectCalendarType {
+    return Intl.message(
+      'Select Calendar Type',
+      name: 'selectCalendarType',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

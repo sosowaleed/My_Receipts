@@ -121,152 +121,162 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
           )
         ],
       ),
-      body: Consumer<ProfileProvider>(
-        builder: (context, provider, child) {
-          if (provider.transactions.isEmpty) {
-            return Center(child: Text(l10n.noTransactions));
-          }
+      body: RefreshIndicator(
+        onRefresh: () => Provider.of<ProfileProvider>(context, listen: false).processRecurrences(),
+        child: Consumer<ProfileProvider>(
+          builder: (context, provider, child) {
+            if (provider.transactions.isEmpty) {
+              return ListView( // Needs to be scrollable for RefreshIndicator
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.8,
+                    child: Center(child: Text(l10n.noTransactions)),
+                  ),
+                ],
+              );
+            }
 
-          // Group transactions by Year based on the current calendar selection
-          final groupedByYear = provider.transactions.groupListsBy((tx) {
-            return _currentCalendar == 'hijri'
-                ? HijriCalendar.fromDate(tx.timestamp).hYear
-                : tx.timestamp.year;
-          });
+            // Group transactions by Year based on the current calendar selection
+            final groupedByYear = provider.transactions.groupListsBy((tx) {
+              return _currentCalendar == 'hijri'
+                  ? HijriCalendar.fromDate(tx.timestamp).hYear
+                  : tx.timestamp.year;
+            });
 
-          // Get a sorted list of years
-          final sortedYears = groupedByYear.keys.toList()
-            ..sort((a, b) => b.compareTo(a)); // Sort descending (newest first)
+            // Get a sorted list of years
+            final sortedYears = groupedByYear.keys.toList()
+              ..sort((a, b) => b.compareTo(a)); // Sort descending (newest first)
 
-          return ListView.builder(
-            itemCount: sortedYears.length,
-            itemBuilder: (ctx, yearIndex) {
-              final year = sortedYears[yearIndex];
-              final transactionsForYear = groupedByYear[year]!;
+            return ListView.builder(
+              itemCount: sortedYears.length,
+              itemBuilder: (ctx, yearIndex) {
+                final year = sortedYears[yearIndex];
+                final transactionsForYear = groupedByYear[year]!;
 
-              // Now, group the year's transactions by a composite month key
-              final groupedByMonth = transactionsForYear.groupListsBy((tx) {
-                final hijri = HijriCalendar.fromDate(tx.timestamp);
-                return DateKey(
-                  gYear: tx.timestamp.year,
-                  gMonth: tx.timestamp.month,
-                  hYear: hijri.hYear,
-                  hMonth: hijri.hMonth,
-                );
-              });
-
-              // Get a sorted list of month keys
-              final sortedMonthKeys = groupedByMonth.keys.toList()
-                ..sort((a, b) {
-                  // Sort by Gregorian month descending for consistent ordering
-                  if (a.gYear != b.gYear) return b.gYear.compareTo(a.gYear);
-                  return b.gMonth.compareTo(a.gMonth);
+                // Now, group the year's transactions by a composite month key
+                final groupedByMonth = transactionsForYear.groupListsBy((tx) {
+                  final hijri = HijriCalendar.fromDate(tx.timestamp);
+                  return DateKey(
+                    gYear: tx.timestamp.year,
+                    gMonth: tx.timestamp.month,
+                    hYear: hijri.hYear,
+                    hMonth: hijri.hMonth,
+                  );
                 });
 
-              return GestureDetector(
-                onLongPress: () {
-                  _showDeleteConfirmationDialog(
-                    context: context,
-                    title: "Delete Year Data",
-                    content:
-                    "Are you sure you want to delete all transaction data for the year $year? This action cannot be undone.",
-                    onConfirm: () {
-                      if (_currentCalendar == 'hijri') {
-                        provider.deleteHijriYearTransactions(year);
-                      } else {
-                        provider.deleteYearTransactions(year);
-                      }
-                    },
-                  );
-                },
-                child: ExpansionTile(
-                  title: Text(year.toString(),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  initiallyExpanded: true,
-                  children: sortedMonthKeys.map((dateKey) {
-                    final transactionsForMonth = groupedByMonth[dateKey]!;
+                // Get a sorted list of month keys
+                final sortedMonthKeys = groupedByMonth.keys.toList()
+                  ..sort((a, b) {
+                    // Sort by Gregorian month descending for consistent ordering
+                    if (a.gYear != b.gYear) return b.gYear.compareTo(a.gYear);
+                    return b.gMonth.compareTo(a.gMonth);
+                  });
 
-                    // Calculate monthly totals
-                    double monthlyIncome = 0;
-                    double monthlyExpenses = 0;
-                    for (var tx in transactionsForMonth) {
-                      if (tx.type == TransactionType.income) {
-                        monthlyIncome += tx.amount;
-                      } else {
-                        monthlyExpenses += tx.amount;
-                      }
-                    }
-                    double netChange = monthlyIncome - monthlyExpenses;
-
-                    return GestureDetector(
-                      onLongPress: () {
-                        _showDeleteConfirmationDialog(
-                          context: context,
-                          title: "Delete Month Data",
-                          content:
-                          "Are you sure you want to delete all transaction data for ${_formatMonthYear(transactionsForMonth.first.timestamp)}? This action cannot be undone.",
-                          onConfirm: () {
-                            if (_currentCalendar == 'hijri') {
-                              provider.deleteHijriMonthTransactions(
-                                  dateKey.hYear, dateKey.hMonth);
-                            } else {
-                              provider.deleteMonthTransactions(
-                                  dateKey.gYear, dateKey.gMonth);
-                            }
-                          },
-                        );
+                return GestureDetector(
+                  onLongPress: () {
+                    _showDeleteConfirmationDialog(
+                      context: context,
+                      title: "Delete Year Data",
+                      content:
+                      "Are you sure you want to delete all transaction data for the year $year? This action cannot be undone.",
+                      onConfirm: () {
+                        if (_currentCalendar == 'hijri') {
+                          provider.deleteHijriYearTransactions(year);
+                        } else {
+                          provider.deleteYearTransactions(year);
+                        }
                       },
-                      child: ExpansionTile(
-                        title: Text(
-                            _formatMonthYear(transactionsForMonth.first.timestamp)),
-                        children: [
-                          // List of transactions for the month
-                          ...transactionsForMonth.map((tx) {
-                            final isIncome = tx.type == TransactionType.income;
-                            final currencyFormat = NumberFormat.currency(
-                              locale: provider.appLocale.toString(),
-                              symbol: provider.appLocale.languageCode == 'ar'
-                                  ? 'SAR'
-                                  : '\$',
-                            );
-
-                            return GestureDetector(
-                              onTap: () => _showEditTransactionOptions(context, tx),
-                              child: ListTile(
-                                leading: Icon(
-                                  isIncome
-                                      ? Icons.arrow_downward
-                                      : Icons.arrow_upward,
-                                  color: isIncome ? Colors.green : Colors.red,
-                                ),
-                                title: Text(tx.description),
-                                subtitle: Text(
-                                    "${_formatDate(tx.timestamp)} - ${tx.categoryName ?? 'N/A'}"),
-                                trailing: Text(
-                                  currencyFormat.format(tx.amount),
-                                  style: TextStyle(
-                                      color: isIncome ? Colors.green : Colors.red,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            );
-                          }),
-                          // Add the monthly summary widget
-                          _MonthlySummary(
-                            income: monthlyIncome,
-                            expenses: monthlyExpenses,
-                            net: netChange,
-                          ),
-                        ],
-                      ),
                     );
-                  }).toList(),
-                ),
-              );
-            },
-          );
-        },
+                  },
+                  child: ExpansionTile(
+                    title: Text(year.toString(),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    initiallyExpanded: true,
+                    children: sortedMonthKeys.map((dateKey) {
+                      final transactionsForMonth = groupedByMonth[dateKey]!;
+
+                      // Calculate monthly totals
+                      double monthlyIncome = 0;
+                      double monthlyExpenses = 0;
+                      for (var tx in transactionsForMonth) {
+                        if (tx.type == TransactionType.income) {
+                          monthlyIncome += tx.amount;
+                        } else {
+                          monthlyExpenses += tx.amount;
+                        }
+                      }
+                      double netChange = monthlyIncome - monthlyExpenses;
+
+                      return GestureDetector(
+                        onLongPress: () {
+                          _showDeleteConfirmationDialog(
+                            context: context,
+                            title: "Delete Month Data",
+                            content:
+                            "Are you sure you want to delete all transaction data for ${_formatMonthYear(transactionsForMonth.first.timestamp)}? This action cannot be undone.",
+                            onConfirm: () {
+                              if (_currentCalendar == 'hijri') {
+                                provider.deleteHijriMonthTransactions(
+                                    dateKey.hYear, dateKey.hMonth);
+                              } else {
+                                provider.deleteMonthTransactions(
+                                    dateKey.gYear, dateKey.gMonth);
+                              }
+                            },
+                          );
+                        },
+                        child: ExpansionTile(
+                          title: Text(
+                              _formatMonthYear(transactionsForMonth.first.timestamp)),
+                          children: [
+                            // List of transactions for the month
+                            ...transactionsForMonth.map((tx) {
+                              final isIncome = tx.type == TransactionType.income;
+                              final currencyFormat = NumberFormat.currency(
+                                locale: provider.appLocale.toString(),
+                                symbol: provider.appLocale.languageCode == 'ar'
+                                    ? 'SAR'
+                                    : '\$',
+                              );
+
+                              return GestureDetector(
+                                onTap: () => _showEditTransactionOptions(context, tx),
+                                child: ListTile(
+                                  leading: Icon(
+                                    isIncome
+                                        ? Icons.arrow_downward
+                                        : Icons.arrow_upward,
+                                    color: isIncome ? Colors.green : Colors.red,
+                                  ),
+                                  title: Text(tx.description),
+                                  subtitle: Text(
+                                      "${_formatDate(tx.timestamp)} - ${tx.categoryName ?? 'N/A'}"),
+                                  trailing: Text(
+                                    currencyFormat.format(tx.amount),
+                                    style: TextStyle(
+                                        color: isIncome ? Colors.green : Colors.red,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              );
+                            }),
+                            // Add the monthly summary widget
+                            _MonthlySummary(
+                              income: monthlyIncome,
+                              expenses: monthlyExpenses,
+                              net: netChange,
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
       bottomNavigationBar: BottomAppBar(
         child: Padding(

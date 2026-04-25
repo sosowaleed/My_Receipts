@@ -219,6 +219,15 @@ class ProfileProvider with ChangeNotifier {
     return grouped.map((key, value) => MapEntry(key, value.fold(0.0, (sum, tx) => sum + tx.amount)));
   }
 
+  Future<void> processRecurrences() async {
+    if (_currentProfile != null) {
+      // Process pending recurrences in the background
+      await RecurrenceService().processRecurrentTransactions(
+          _currentProfile!.id!);
+      // Reload everything to reflect new transaction instances and balance
+      await refreshCurrentProfile();
+    }
+  }
 
 
   /// Gets monthly income/expense totals for the bar chart.

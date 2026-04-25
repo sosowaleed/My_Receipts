@@ -193,6 +193,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "save": MessageLookupByLibrary.simpleMessage("Save"),
     "saveSimulation": MessageLookupByLibrary.simpleMessage("Save Simulation"),
+    "selectCalendarType": MessageLookupByLibrary.simpleMessage(
+      "Select Calendar Type",
+    ),
     "selectExportLocation": MessageLookupByLibrary.simpleMessage(
       "Select Export Location",
     ),

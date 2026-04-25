@@ -86,6 +86,19 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
     final originalAdapter = ChartDataAdapter(transactions: profileProvider.transactions);
     final simulatedAdapter = ChartDataAdapter(transactions: simProvider.simulatedTransactions);
 
+    final currencyFormat = NumberFormat.currency(
+        locale: profileProvider.appLocale.toString(),
+        symbol: profileProvider.appLocale.languageCode == 'ar' ? 'SAR' : '\$');
+
+    // --- CALCULATION FOR TOTAL BALANCES ---
+    double calculateNet(List<Transaction> txs) => txs.fold(0.0, (sum, tx) =>
+    sum + (tx.type == TransactionType.income ? tx.amount : -tx.amount));
+
+    final realNet = calculateNet(profileProvider.transactions);
+    final simNet = calculateNet(simProvider.simulatedTransactions);
+    final realTotalBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
+    final simulatedTotalBalance = realTotalBalance - realNet + simNet;
+
     // --- TIMELINE FILTERING LOGIC (Synchronized for both charts) ---
     final DateTime start, end;
     switch (_selectedPeriod) {
@@ -123,7 +136,7 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
       originalPeriodInitialBalance -= (tx.type == TransactionType.income ? tx.amount : -tx.amount);
     }
 
-    double simulatedPeriodInitialBalance = profileProvider.currentProfile?.walletAmount ?? 0.0;
+    double simulatedPeriodInitialBalance = simulatedTotalBalance;
     for (final tx in simProvider.simulatedTransactions.where((t) => t.timestamp.isAfter(start))) {
       simulatedPeriodInitialBalance -= (tx.type == TransactionType.income ? tx.amount : -tx.amount);
     }
@@ -139,6 +152,38 @@ class _ComparisonDashboardScreenState extends State<ComparisonDashboardScreen> {
           return ListView(
             padding: const EdgeInsets.all(8.0),
             children: [
+              // Overall Balances
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.last30DaysSummary, style: Theme.of(context).textTheme.titleLarge), // Reusing label for consistency
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SummaryCard(
+                            title: l10n.original,
+                            value: currencyFormat.format(realTotalBalance),
+                            color: realTotalBalance >= 0 ? Colors.blue : Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _SummaryCard(
+                            title: widget.simulationToCompare.name,
+                            value: currencyFormat.format(simulatedTotalBalance),
+                            color: simulatedTotalBalance >= 0 ? Colors.blue : Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+
               // Monthly Overview (Stays same)
               _buildComparisonCard(
                 context: context,
@@ -338,6 +383,31 @@ class _BreakdownSection extends StatelessWidget {
         ),
         PieChartLegend(categoryData: categoryData, colors: colors),
       ],
+    );
+  }
+}
+
+// Helper widget for summary cards matching FinancialDashboardScreen theme
+class _SummaryCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+  const _SummaryCard({required this.title, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Text(title, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 4),
+            Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
     );
   }
 }

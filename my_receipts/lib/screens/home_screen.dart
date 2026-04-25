@@ -11,19 +11,15 @@ import 'package:my_receipts/models/transaction.dart';
 import '../models/profile.dart';
 import '../services/csv_service.dart';
 import '../utils/snackbar_helper.dart';
-// Import other necessary files like csv_service later
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // LayoutBuilder will help us build different UIs based on screen width
     return LayoutBuilder(
       builder: (context, constraints) {
-        // A common breakpoint for tablets
         final isWideScreen = constraints.maxWidth > 720;
-
         if (isWideScreen) {
           return _buildWideLayout(context);
         } else {
@@ -36,7 +32,10 @@ class HomeScreen extends StatelessWidget {
   Widget _buildNarrowLayout(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(context),
-      body: _buildBody(context, isWideScreen: false),
+      body: RefreshIndicator(
+        onRefresh: () => Provider.of<ProfileProvider>(context, listen: false).processRecurrences(),
+        child: _buildBody(context, isWideScreen: false),
+      ),
     );
   }
 
@@ -45,16 +44,17 @@ class HomeScreen extends StatelessWidget {
       appBar: _buildAppBar(context),
       body: Row(
         children: [
-          // The receipt review screen on the left
           const Expanded(
-            flex: 2, // Takes 2/3 of the space
+            flex: 2,
             child: ReceiptReviewScreen(),
           ),
           const VerticalDivider(width: 1),
-          // The main home controls on the right
           Expanded(
-            flex: 1, // Takes 1/3 of the space
-            child: _buildBody(context, isWideScreen: true),
+            flex: 1,
+            child: RefreshIndicator(
+              onRefresh: () => Provider.of<ProfileProvider>(context, listen: false).processRecurrences(),
+              child: _buildBody(context, isWideScreen: true),
+            ),
           ),
         ],
       ),
@@ -68,7 +68,6 @@ class HomeScreen extends StatelessWidget {
     return AppBar(
       title: Text(l10n.appName),
       actions: [
-        // Language Selector
         PopupMenuButton<Locale>(
           onSelected: (Locale locale) {
             provider.setLocale(locale);
@@ -85,7 +84,6 @@ class HomeScreen extends StatelessWidget {
           ],
           icon: const Icon(Icons.language),
         ),
-        // Profile Selector
         Consumer<ProfileProvider>(
           builder: (context, profileProvider, child) {
             return IconButton(
@@ -143,7 +141,6 @@ class HomeScreen extends StatelessWidget {
         return SimpleDialog(
           title: Text(l10n.profiles),
           children: [
-            // Map each profile to a custom dialog option
             ...provider.allProfiles.map((profile) {
               final bool isCurrent = provider.currentProfile?.id == profile.id;
               return SimpleDialogOption(
@@ -162,25 +159,21 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Profile edit icon
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       color: Theme.of(context).textTheme.bodySmall?.color,
                       tooltip: l10n.edit,
                       onPressed: () {
-                        Navigator.pop(dialogContext); // Close profile list
+                        Navigator.pop(dialogContext);
                         _showEditProfileNameDialog(context, profile);
                       },
                     ),
-                    // Adjacent delete button
                     IconButton(
                       icon: const Icon(Icons.delete_outline),
                       color: Colors.red.shade600,
                       tooltip: l10n.deleteProfile,
                       onPressed: () {
-                        // First, close the profile list dialog
                         Navigator.pop(dialogContext);
-                        // Then, show the confirmation dialog
                         _confirmDeleteProfile(context, profile);
                       },
                     ),
@@ -188,9 +181,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               );
             }),
-            // Separator before the "Add" option
             const Divider(),
-            // The "Add Profile" option
             SimpleDialogOption(
               onPressed: () {
                 Navigator.pop(dialogContext);
@@ -248,52 +239,54 @@ class HomeScreen extends StatelessWidget {
           final walletAmount = provider.currentProfile?.walletAmount ?? 0.0;
           final currencyFormat = NumberFormat.currency(
             locale: provider.appLocale.toString(),
-            symbol: provider.appLocale.languageCode == 'ar' ? 'SAR' : '\$', // Example symbols
+            symbol: provider.appLocale.languageCode == 'ar' ? 'SAR' : '\$',
           );
 
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                currencyFormat.format(walletAmount),
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: walletAmount >= 0 ? Colors.green : Colors.red),
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: 300,
-                height: 300,
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _HomeIconButton(
-                        icon: Icons.arrow_downward,
-                        label: l10n.homeIncoming,
-                        color: Colors.green,
-                        onPressed: () => _showTransactionOverlay(context, TransactionType.income)),
-                    _HomeIconButton(
-                        icon: Icons.arrow_upward,
-                        label: l10n.homeOutgoing,
-                        color: Colors.red,
-                        onPressed: () => _showTransactionOverlay(context, TransactionType.outgoing)),
-                    _HomeIconButton(
-                        icon: Icons.receipt_long,
-                        label: l10n.homeReview,
-                        color: Colors.blue,
-                        // On narrow screen, navigate. On wide, it's already visible.
-                        onPressed: isWideScreen ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptReviewScreen()))),
-                    _HomeIconButton(
-                        icon: Icons.import_export,
-                        label: l10n.homeImportExport,
-                        color: Colors.orange,
-                        onPressed: () => _showImportExportDialog(context)),
-                  ],
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  currencyFormat.format(walletAmount),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: walletAmount >= 0 ? Colors.green : Colors.red),
                 ),
-              ),
-            ],
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _HomeIconButton(
+                          icon: Icons.arrow_downward,
+                          label: l10n.homeIncoming,
+                          color: Colors.green,
+                          onPressed: () => _showTransactionOverlay(context, TransactionType.income)),
+                      _HomeIconButton(
+                          icon: Icons.arrow_upward,
+                          label: l10n.homeOutgoing,
+                          color: Colors.red,
+                          onPressed: () => _showTransactionOverlay(context, TransactionType.outgoing)),
+                      _HomeIconButton(
+                          icon: Icons.receipt_long,
+                          label: l10n.homeReview,
+                          color: Colors.blue,
+                          onPressed: isWideScreen ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptReviewScreen()))),
+                      _HomeIconButton(
+                          icon: Icons.import_export,
+                          label: l10n.homeImportExport,
+                          color: Colors.orange,
+                          onPressed: () => _showImportExportDialog(context)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -316,10 +309,10 @@ class HomeScreen extends StatelessWidget {
               leading: const Icon(Icons.file_upload),
               title: Text(l10n.importAction),
               onTap: () async {
-                Navigator.of(ctx).pop(); // Close dialog first
+                Navigator.of(ctx).pop();
                 final success = await csvService.importFromCsv(provider.currentProfile!.id!);
                 if (success) {
-                  await provider.loadInitialData(); // Full refresh
+                  await provider.loadInitialData();
                   SnackbarHelper.show(context, l10n.importSuccess);
                 } else {
                   SnackbarHelper.show(context, l10n.importFailedCheckFormat, isError: true);
@@ -330,10 +323,8 @@ class HomeScreen extends StatelessWidget {
               leading: const Icon(Icons.file_download),
               title: Text(l10n.exportAction),
               onTap: () {
-                // Close the first dialog...
                 Navigator.of(ctx).pop();
-                // ...and show the new calendar choice dialog.
-                _showCalendarChoiceForExport(context);
+                _showCalendarTypeDialog(context);
               },
             ),
           ],
@@ -342,47 +333,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-// Add this new private method to the HomeScreen class
-  void _showCalendarChoiceForExport(BuildContext context) {
+  void _showCalendarTypeDialog(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final provider = Provider.of<ProfileProvider>(context, listen: false);
     final csvService = CsvService();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.calendarPreference),
-        content: const Text("Choose the calendar format for the exported date column."),
-        actions: [
-          TextButton(
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.selectCalendarType),
+        children: [
+          SimpleDialogOption(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final path = await csvService.exportToCsv(
+                  provider.transactions,
+                  provider.currentProfile?.name ?? 'Profile',
+                  calendarType: 'gregorian'
+              );
+              if (path != null) SnackbarHelper.show(context, l10n.exportSuccess(path).replaceAll('{path}', path));
+            },
             child: Text(l10n.gregorian),
-            onPressed: () async {
-              Navigator.of(ctx).pop(); // Close calendar choice dialog
-              final path = await csvService.exportToCsv(
-                provider.transactions,
-                provider.currentProfile!.name,
-                dialogTitle: l10n.selectExportLocation,
-                calendarType: 'gregorian', // Pass the choice
-              );
-              if (path != null && context.mounted) {
-                SnackbarHelper.show(context, l10n.exportSuccess(path.split('/').last).replaceAll('{path}', path));
-              }
-            },
           ),
-          TextButton(
-            child: Text(l10n.hijri),
+          SimpleDialogOption(
             onPressed: () async {
-              Navigator.of(ctx).pop(); // Close calendar choice dialog
+              Navigator.pop(ctx);
               final path = await csvService.exportToCsv(
-                provider.transactions,
-                provider.currentProfile!.name,
-                dialogTitle: l10n.selectExportLocation,
-                calendarType: 'hijri', // Pass the choice
+                  provider.transactions,
+                  provider.currentProfile?.name ?? 'Profile',
+                  calendarType: 'hijri'
               );
-              if (path != null && context.mounted) {
-                SnackbarHelper.show(context, l10n.exportSuccess(path.split('/').last).replaceAll('{path}', path));
-              }
+              if (path != null) SnackbarHelper.show(context, l10n.exportSuccess(path).replaceAll('{path}', path));
             },
+            child: Text(l10n.hijri),
           ),
         ],
       ),
@@ -393,33 +376,48 @@ class HomeScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TransactionOverlay(type: type),
+      builder: (context) => TransactionOverlay(type: type),
     );
   }
 }
 
-// A helper widget for the home screen buttons
 class _HomeIconButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback? onPressed;
 
-  const _HomeIconButton({required this.icon, required this.label, required this.color, this.onPressed});
+  const _HomeIconButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: onPressed == null ? Colors.grey : color),
+            Icon(icon, size: 40, color: color),
             const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color.withOpacity(0.8),
+              ),
+            ),
           ],
         ),
       ),

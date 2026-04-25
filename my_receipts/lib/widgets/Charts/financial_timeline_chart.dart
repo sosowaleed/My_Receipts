@@ -7,6 +7,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:my_receipts/widgets/transaction_overlay.dart';
 import 'package:my_receipts/models/timeline_period.dart';
+import 'package:my_receipts/providers/profile_provider.dart';
+import 'package:provider/provider.dart';
 
 class FinancialTimelineChart extends StatefulWidget {
   final double initialBalance; // The balance at the VERY beginning of history
@@ -349,6 +351,19 @@ class _FinancialTimelineChartState extends State<FinancialTimelineChart> {
               isSimulation: widget.isSimulation,
             ),
           );
+          // --- Trigger refresh after editing ---
+          if (mounted) {
+            if (widget.isSimulation) {
+              // Simulation handles notifyListeners in SimulationProvider
+            } else {
+              Provider.of<ProfileProvider>(context, listen: false).refreshCurrentProfile();
+            }
+
+            // Clear highlight after edit to reflect changes
+            setState(() {
+              _highlightedTransaction = null;
+            });
+          }
         },
         child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),

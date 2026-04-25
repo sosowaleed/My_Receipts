@@ -100,5 +100,6 @@
   "noTransactionsInThisPeriod": "لم تحدث أي معاملات في هذه الفترة.",
   "all": "الكل",
   "timeline": "الجدول الزمني",
-  "goToToday": "الانتقال إلى اليوم"
+  "goToToday": "الانتقال إلى اليوم",
+  "selectCalendarType": "حدد نوع التقويم"
 }

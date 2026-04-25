@@ -310,8 +310,18 @@ class DatabaseService {
           : currentWallet - transaction.amount;
       await txn.update('profiles', {'walletAmount': newWallet}, where: 'id = ?', whereArgs: [transaction.profileId]);
 
-      //final id = await txn.insert('transactions', transaction.toMap());
-      return transaction;
+      final txMap = transaction.toMap();
+      txMap.remove('id');
+      final id = await txn.insert('transactions', txMap);
+
+      final result = await txn.rawQuery('''
+        SELECT t.*, c.name as categoryName 
+        FROM transactions t
+        LEFT JOIN categories c ON t.categoryId = c.id
+        WHERE t.id = ?
+      ''', [id]);
+      
+      return Transaction.fromMap(result.first);
     });
   }
 
